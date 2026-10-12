@@ -25,3 +25,7 @@ same digest. `tools/rollback.py --to <version> --check-only` rebuilds at that co
 
 If the digests ever differ, something outside source control changed the build. That is not a rollback
 problem, it is a supply chain problem, and it stops there.
+
+## Rollback drill
+
+P1.09 writes the drill. Until then, the commands in this README are the procedure.
