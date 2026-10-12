@@ -33,6 +33,14 @@ jobs:
       - name: Contract tests (P1.10)
         run: bash contracts/run_tests.sh
 
+      - name: Part 1 package tests
+        run: |
+          for d in part1/*/tests; do
+            [ -d "$d" ] || continue
+            echo "== $d"
+            python3 -m unittest discover -s "$d" -t "$d"
+          done
+
       - name: Build the artifact (LA-DEP-05)
         run: python3 tools/build_artifact.py --out dist
 
