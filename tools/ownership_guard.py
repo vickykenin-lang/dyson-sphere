@@ -32,8 +32,15 @@ RUNTIME_FORBIDDEN = re.compile(
     r"api\.github\.com|github\.com/[\w.-]+/[\w.-]+/(actions|dispatches)|workflow_dispatch|repository_dispatch")
 
 
+class CannotCheck(Exception):
+    """The guard could not work out what changed, so it refuses rather than reporting Allowed."""
+
+
 def run(*args):
-    return subprocess.run(args, capture_output=True, text=True).stdout.strip()
+    done = subprocess.run(args, capture_output=True, text=True)
+    if done.returncode != 0:
+        raise CannotCheck("%s failed: %s" % (" ".join(args), done.stderr.strip() or "no reason given"))
+    return done.stdout.strip()
 
 
 def owner_of(path):
@@ -51,7 +58,14 @@ def part_of_branch(branch):
 
 
 def changed_files(base):
-    merge_base = run("git", "merge-base", base, "HEAD") or base
+    try:
+        merge_base = run("git", "rev-parse", "--verify", base)
+    except CannotCheck:
+        raise CannotCheck(
+            "%s is not a revision this clone has, so the guard cannot see what changed. A guard that "
+            "cannot see a diff must not report Allowed. Run `git fetch origin main:refs/remotes/origin/main` "
+            "first, or set GUARD_BASE to a revision that exists." % base)
+    merge_base = run("git", "merge-base", merge_base, "HEAD")
     out = run("git", "diff", "--name-only", merge_base, "HEAD")
     return [f for f in out.split("\n") if f]
 
@@ -78,7 +92,8 @@ def check(files, branch):
         if "/scaffold/" in f or "/tests/" in f or f.endswith(".md"):
             continue
         try:
-            text = open(f, encoding="utf-8", errors="ignore").read()
+            with open(f, encoding="utf-8", errors="ignore") as handle:
+                text = handle.read()
         except OSError:
             continue
         hit = RUNTIME_FORBIDDEN.search(text)
@@ -96,8 +111,12 @@ def main():
     ap.add_argument("--files", nargs="*")
     args = ap.parse_args()
 
-    branch = args.branch or run("git", "rev-parse", "--abbrev-ref", "HEAD")
-    files = args.files if args.files is not None else changed_files(args.base)
+    try:
+        branch = args.branch or run("git", "rev-parse", "--abbrev-ref", "HEAD")
+        files = args.files if args.files is not None else changed_files(args.base)
+    except CannotCheck as problem:
+        print("ownership guard: CANNOT CHECK. %s" % problem)
+        return 2
 
     if not files:
         print("ownership guard: nothing changed against %s. Allowed." % args.base)
