@@ -1,0 +1,52 @@
+name: Dyson Layer A
+
+# GitHub is private source control, code review, version history and controlled CI/CD only.
+# Nothing here sits in the runtime response loop (LA-SEC-06).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Ownership guard (rule W2, LA-SEC-06)
+        if: github.event_name == 'pull_request'
+        env:
+          GUARD_BASE: origin/${{ github.base_ref }}
+          GUARD_BRANCH: ${{ github.head_ref }}
+        run: python3 tools/ownership_guard.py
+
+      - name: Contract tests (P1.10)
+        run: bash contracts/run_tests.sh
+
+      - name: Build the artifact (LA-DEP-05)
+        run: python3 tools/build_artifact.py --out dist
+
+      - name: Prove the artifact rebuilds to the same bytes
+        run: |
+          python3 tools/build_artifact.py --out dist2
+          V=$(python3 -c "import json,glob;print(json.load(open(glob.glob('dist/manifest-*.json')[0]))['version'])")
+          A=$(python3 -c "import json;print(json.load(open('dist/manifest-'+'$V'+'.json'))['artifact_sha256'])")
+          B=$(python3 -c "import json;print(json.load(open('dist2/manifest-'+'$V'+'.json'))['artifact_sha256'])")
+          echo "first  $A"; echo "second $B"
+          test "$A" = "$B" || { echo "The build is not reproducible. LA-DEP-05 is not met."; exit 1; }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dyson-layer-a-${{ github.sha }}
+          path: dist/
+          retention-days: 90

@@ -1,0 +1,10 @@
+# Who reviews what (rule W2). A part never reviews its own folder alone.
+# GitHub enforces this only once branch protection requires a review from a code owner.
+
+/contracts/   @vickykenin-lang
+/tools/       @vickykenin-lang
+/.github/     @vickykenin-lang
+/part1/       @vickykenin-lang
+/part2a/      @vickykenin-lang
+/part2b/      @vickykenin-lang
+*             @vickykenin-lang

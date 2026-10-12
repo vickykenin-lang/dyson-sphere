@@ -1,0 +1,2674 @@
+{
+  "contract_version": "v1.0",
+  "date": "11 Oct 2026",
+  "owner_package": "P1.10",
+  "built_from": {
+    "plan": "Layer A Execution Plan, Docs rev 62",
+    "prd": "Layer A PRD v1.0, Docs rev 31"
+  },
+  "conventions": "contracts/CONVENTIONS.md",
+  "task_states": "contracts/TASK_STATES.md",
+  "components": {
+    "P1.05": {
+      "card": "-",
+      "name": "Dyson app, Web first with Android as the target",
+      "part": "Part 1",
+      "stub_port": 8105
+    },
+    "P1.06": {
+      "card": "E",
+      "name": "Monitoring and Health Controller (E)",
+      "part": "Part 1",
+      "stub_port": 8106
+    },
+    "P1.07": {
+      "card": "J",
+      "name": "Founder Financial Dashboard (J)",
+      "part": "Part 1",
+      "stub_port": 8107
+    },
+    "2A.03": {
+      "card": "-",
+      "name": "Entry Gateway",
+      "part": "Part 2A",
+      "stub_port": 8203
+    },
+    "2A.04": {
+      "card": "-",
+      "name": "Direct Founder Controls",
+      "part": "Part 2A",
+      "stub_port": 8204
+    },
+    "2A.05": {
+      "card": "A",
+      "name": "Governance Core",
+      "part": "Part 2A",
+      "stub_port": 8205
+    },
+    "2A.06": {
+      "card": "-",
+      "name": "STOP / PAUSE / RESUME bus",
+      "part": "Part 2A",
+      "stub_port": 8206
+    },
+    "2A.07": {
+      "card": "G",
+      "name": "Governed Tool Hub (G)",
+      "part": "Part 2A",
+      "stub_port": 8207
+    },
+    "2A.08": {
+      "card": "-",
+      "name": "Supply Chain / Integration Gate",
+      "part": "Part 2A",
+      "stub_port": 8208
+    },
+    "2A.09": {
+      "card": "D",
+      "name": "Task engine (Orchestrator D)",
+      "part": "Part 2A",
+      "stub_port": 8209
+    },
+    "2B.02": {
+      "card": "I",
+      "name": "Memory & Evidence Layer (I)",
+      "part": "Part 2B",
+      "stub_port": 8302
+    },
+    "2B.03": {
+      "card": "C",
+      "name": "Model Router & Fallback (C)",
+      "part": "Part 2B",
+      "stub_port": 8303
+    },
+    "2B.04": {
+      "card": "B",
+      "name": "Conversation Engine (B)",
+      "part": "Part 2B",
+      "stub_port": 8304
+    },
+    "2B.05": {
+      "card": "4 (Hermes)",
+      "name": "Hermes runtime",
+      "part": "Part 2B",
+      "stub_port": 8305
+    },
+    "2B.06": {
+      "card": "F",
+      "name": "QA/QC Controller (F)",
+      "part": "Part 2B",
+      "stub_port": 8306
+    },
+    "2B.07": {
+      "card": "-",
+      "name": "Test T0 and its independent verifier, built as a minimal fixture",
+      "part": "Part 2B",
+      "stub_port": 8307,
+      "plays_role": "Receptor. Test T0 is a Receptor, so it meets Layer A on the five lanes like any other (open item 4). It has no contract of its own, and it must satisfy every Receptor obligation."
+    },
+    "2B.08": {
+      "card": "H",
+      "name": "Financial Control (H)",
+      "part": "Part 2B",
+      "stub_port": 8308
+    }
+  },
+  "actors": {
+    "Founder": "The Founder, a person. Authenticated at the Entry Gateway; the only source of authorization",
+    "Receptor": "A Layer B Receptor. In the baseline the only one is Test T0 (2B.07), synthetic and no-money"
+  },
+  "lanes": [
+    {
+      "id": "LANE-QA",
+      "chip": "QA/QC & Verification",
+      "style": "Green, solid",
+      "layer_a_owner": "F Independent QA/QC Controller",
+      "owner_package": "2B.06",
+      "direction": "Request down to the Receptor, evidence and results back",
+      "carries": "Quality standards, verification requests, evidence, results, escalations",
+      "basis": "Diagram; AMD-3",
+      "operations": [
+        {
+          "operation_id": "QA-01",
+          "method": "POST",
+          "path": "/v1/verifications",
+          "caller": "2B.06",
+          "callee": "Receptor",
+          "purpose": "F asks the Receptor to produce the real-output evidence for a task.",
+          "request": [
+            {
+              "name": "Idempotency-Key",
+              "required": true,
+              "spec": "header, `idem_` + 26 base32. Required on every state-changing call"
+            },
+            {
+              "name": "verification_id",
+              "required": true,
+              "spec": "string, `evd_`-style id minted by F"
+            },
+            {
+              "name": "task_id",
+              "required": true,
+              "spec": "string, `tsk_`"
+            },
+            {
+              "name": "quality_standard",
+              "required": true,
+              "spec": "string, the standard F will judge against"
+            },
+            {
+              "name": "requested_evidence",
+              "required": true,
+              "spec": "array of strings, what the Receptor must produce"
+            },
+            {
+              "name": "deadline_ms",
+              "required": false,
+              "spec": "integer, how long F will wait"
+            }
+          ],
+          "response": [
+            {
+              "name": "verification_id",
+              "required": true,
+              "spec": "string, echoed"
+            },
+            {
+              "name": "status",
+              "required": true,
+              "spec": "string, `accepted`"
+            },
+            {
+              "name": "accepted_at",
+              "required": true,
+              "spec": "RFC 3339 UTC with milliseconds"
+            }
+          ],
+          "authorized_by": "F's own component identity, issued by 2A.02. A Receptor accepts a verification request only from F.",
+          "when_callee_is_down": "Answer the caller `dependency_down` (503, retriable). The caller keeps its task in its current state, records the attempt, and retries with the same idempotency key inside its retry limit. Nothing is reported as complete.",
+          "when_stopped": "Refuse with `stopped` (409). No new work starts, and the refusal is written to the audit log. STOP is checked on every call, whatever the AI model does (LA-SAF-01, LA-SAF-02).",
+          "errors": [
+            "invalid_request",
+            "unauthenticated",
+            "forbidden",
+            "stopped",
+            "rate_limited",
+            "internal",
+            "dependency_down",
+            "timeout"
+          ],
+          "requirements": [
+            "LA-IF-01",
+            "LA-IF-04",
+            "LA-QA-01"
+          ]
+        },
+        {
+          "operation_id": "QA-02",
+          "method": "POST",
+          "path": "/v1/evidence",
+          "caller": "Receptor",
+          "callee": "2B.06",
+          "purpose": "The Receptor returns its evidence. The claim is not proof: F verifies the real output itself.",
+          "request": [
+            {
+              "name": "Idempotency-Key",
+              "required": true,
+              "spec": "header, `idem_` + 26 base32. Required on every state-changing call"
+            },
+            {
+              "name": "verification_id",
+              "required": true,
+              "spec": "string"
+            },
+            {
+              "name": "task_id",
+              "required": true,
+              "spec": "string, `tsk_`"
+            },
+            {
+              "name": "evidence",
+              "required": true,
+              "spec": "array of objects, each with `kind`, `ref` and `produced_at`"
+            },
+            {
+              "name": "claimed_outcome",
+              "required": false,
+              "spec": "string, the Receptor's own claim. Recorded, never trusted"
+            }
+          ],
+          "response": [
+            {
+              "name": "evidence_ids",
+              "required": true,
+              "spec": "array of strings, `evd_` ids written to the registry"
+            },
+            {
+              "name": "verdict",
+              "required": true,
+              "spec": "string, always `pending` on arrival. F decides in its own time"
+            },
+            {
+              "name": "self_certification_accepted",
+              "required": true,
+              "spec": "boolean, always false (LA-QA-05)"
+            }
+          ],
+          "authorized_by": "The Receptor's own identity. It authorizes nothing: it may report, never conclude.",
+          "when_callee_is_down": "Answer the caller `dependency_down` (503, retriable). The caller keeps its task in its current state, records the attempt, and retries with the same idempotency key inside its retry limit. Nothing is reported as complete.",
+          "when_stopped": "Allowed while stopped: this call carries no authority to act and starts no new work. It is recorded like any other call.",
+          "errors": [
+            "invalid_request",
+            "unauthenticated",
+            "forbidden",
+            "not_found",
+            "idempotency_conflict",
+            "rate_limited",
+            "internal"
+          ],
+          "requirements": [
+            "LA-IF-04",
+            "LA-QA-05",
+            "LA-EVD-01",
+            "LA-EVD-02"
+          ]
+        },
+        {
+          "operation_id": "QA-03",
+          "method": "POST",
+          "path": "/v1/escalations",
+          "caller": "Receptor",
+          "callee": "2B.06",
+          "purpose": "The Receptor escalates a problem it cannot solve inside its own bounds.",
+          "request": [
+            {
+              "name": "Idempotency-Key",
+              "required": true,
+              "spec": "header, `idem_` + 26 base32. Required on every state-changing call"
+            },
+            {
+              "name": "receptor_id",
+              "required": true,
+              "spec": "string, `rcp_`"
+            },
+            {
+              "name": "severity",
+              "required": true,
+              "spec": "string, `low`, `medium` or `high`"
+            },
+            {
+              "name": "summary",
+              "required": true,
+              "spec": "string, one sentence"
+            },
+            {
+              "name": "task_id",
+              "required": false,
+              "spec": "string, `tsk_` if it concerns one task"
+            }
+          ],
+          "response": [
+            {
+              "name": "escalation_id",
+              "required": true,
+              "spec": "string"
+            },
+            {
+              "name": "routed_to",
+              "required": true,
+              "spec": "string, `2B.06`, and `2A.05` when severity is high"
+            }
+          ],
+          "authorized_by": "The Receptor's own identity.",
+          "when_callee_is_down": "Answer the caller `dependency_down` (503, retriable). The caller keeps its task in its current state, records the attempt, and retries with the same idempotency key inside its retry limit. Nothing is reported as complete.",
+          "when_stopped": "Allowed while stopped: this call carries no authority to act and starts no new work. It is recorded like any other call.",
+          "errors": [
+            "invalid_request",
+            "unauthenticated",
+            "rate_limited",
+            "internal"
+          ],
+          "requirements": [
+            "LA-QA-04",
+            "LA-MON-06"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "LANE-TASK",
+      "chip": "Tasks from Orchestrator (via Tool Hub)",
+      "style": "Blue, solid",
+      "layer_a_owner": "D Orchestrator through G Governed Tool Hub",
+      "owner_package": "2A.09",
+      "direction": "Tasks down, results back",
+      "carries": "Task instructions with task ID and idempotency key",
+      "basis": "Diagram; Closure §9",
+      "operations": [
+        {
+          "operation_id": "TASK-01",
+          "method": "POST",
+          "path": "/v1/receptor/tasks",
+          "caller": "2A.07",
+          "callee": "Receptor",
+          "purpose": "G hands a Receptor one task on D's behalf. G is the only path to a Receptor's task interface.",
+          "request": [
+            {
+              "name": "Idempotency-Key",
+              "required": true,
+              "spec": "header, `idem_` + 26 base32. Required on every state-changing call"
+            },
+            {
+              "name": "task_id",
+              "required": true,
+              "spec": "string, `tsk_`, minted by D"
+            },
+            {
+              "name": "receptor_id",
+              "required": true,
+              "spec": "string, `rcp_`"
+            },
+            {
+              "name": "instruction",
+              "required": true,
+              "spec": "object, what to do, inside the Receptor's declared scope"
+            },
+            {
+              "name": "scope",
+              "required": true,
+              "spec": "object, the permitted tools and spend for this task"
+            },
+            {
+              "name": "approval_id",
+              "required": false,
+              "spec": "string, `apr_` when the action needed a Founder approval"
+            },
+            {
+              "name": "deadline_ms",
+              "required": false,
+              "spec": "integer"
+            }
+          ],
+          "response": [
+            {
+              "name": "task_id",
+              "required": true,
+              "spec": "string, echoed"
+            },
+            {
+              "name": "state",
+              "required": true,
+              "spec": "string, `accepted`"
+            },
+            {
+              "name": "accepted_at",
+              "required": true,
+              "spec": "RFC 3339 UTC with milliseconds"
+            }
+          ],
+          "authorized_by": "G, after it has checked identity and permission, Receptor scope, risk and spend limits, approval status and the current STOP state. A Receptor refuses a task from anyone but G.",
+          "when_callee_is_down": "Answer the caller `dependency_down` (503, retriable). The caller keeps its task in its current state, records the attempt, and retries with the same idempotency key inside its retry limit. Nothing is reported as complete.",
+          "when_stopped": "Refuse with `stopped` (409). No new work starts, and the refusal is written to the audit log. STOP is checked on every call, whatever the AI model does (LA-SAF-01, LA-SAF-02).",
+          "errors": [
+            "invalid_request",
+            "unauthenticated",
+            "forbidden",
+            "idempotency_conflict",
+            "approval_needed",
+            "stopped",
+            "not_admitted",
+            "spend_limit",
+            "rate_limited",
+            "internal",
+            "dependency_down",
+            "timeout"
+          ],
+          "requirements": [
+            "LA-IF-01",
+            "LA-IF-02",
+            "LA-TOOL-01",
+            "LA-TOOL-02",
+            "LA-ORC-03",
+            "LA-ORC-05"
+          ]
+        },
+        {
+          "operation_id": "TASK-02",
+          "method": "POST",
+          "path": "/v1/task-results",
+          "caller": "Receptor",
+          "callee": "2A.07",
+          "purpose": "The Receptor reports a result. The task does not become completed-verified on this report.",
+          "request": [
+            {
+              "name": "Idempotency-Key",
+              "required": true,
+              "spec": "header, `idem_` + 26 base32. Required on every state-changing call"
+            },
+            {
+              "name": "task_id",
+              "required": true,
+              "spec": "string, `tsk_`"
+            },
+            {
+              "name": "output_ref",
+              "required": true,
+              "spec": "string, where the real output can be checked"
+            },
+            {
+              "name": "claimed_outcome",
+              "required": true,
+              "spec": "string, the Receptor's own claim"
+            },
+            {
+              "name": "evidence",
+              "required": false,
+              "spec": "array of objects, what it can show"
+            }
+          ],
+          "response": [
+            {
+              "name": "task_id",
+              "required": true,
+              "spec": "string, echoed"
+            },
+            {
+              "name": "state",
+              "required": true,
+              "spec": "string, `running` until F verifies (LA-IF-04)"
+            },
+            {
+              "name": "verification_required",
+              "required": true,
+              "spec": "boolean, always true"
+            }
+          ],
+          "authorized_by": "The Receptor's own identity. It cannot set a task's state.",
+          "when_callee_is_down": "Answer the caller `dependency_down` (503, retriable). The caller keeps its task in its current state, records the attempt, and retries with the same idempotency key inside its retry limit. Nothing is reported as complete.",
+          "when_stopped": "Allowed while stopped: this call carries no authority to act and starts no new work. It is recorded like any other call.",
+          "errors": [
+            "invalid_request",
+            "unauthenticated",
+            "forbidden",
+            "not_found",
+            "idempotency_conflict",
+            "rate_limited",
+            "internal"
+          ],
+          "requirements": [
+            "LA-IF-04",
+            "LA-ORC-06",
+            "LA-EVD-01",
+            "LA-EVD-02"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "LANE-FIN",
+      "chip": "Financial Reporting",
+      "style": "Purple, dashed",
+      "layer_a_owner": "H Financial Control & Reconciliation",
+      "owner_package": "2B.08",
+      "direction": "Receptor to Core",
+      "carries": "Revenue reports and payment records",
+      "basis": "Diagram; AMD-2",
+      "operations": [
+        {
+          "operation_id": "FIN-01",
+          "method": "POST",
+          "path": "/v1/revenue-reports",
+          "caller": "Receptor",
+          "callee": "2B.08",
+          "purpose": "The Receptor reports revenue. It stays not final until H matches a Founder-uploaded statement.",
+          "request": [
+            {
+              "name": "Idempotency-Key",
+              "required": true,
+              "spec": "header, `idem_` + 26 base32. Required on every state-changing call"
+            },
+            {
+              "name": "receptor_id",
+              "required": true,
+              "spec": "string, `rcp_`"
+            },
+            {
+              "name": "period",
+              "required": true,
+              "spec": "string, `YYYY-MM-DD` to `YYYY-MM-DD`"
+            },
+            {
+              "name": "amount_minor",
+              "required": true,
+              "spec": "integer, in the currency's minor unit. No floating point for money"
+            },
+            {
+              "name": "currency",
+              "required": true,
+              "spec": "string, ISO 4217"
+            },
+            {
+              "name": "payment_records",
+              "required": false,
+              "spec": "array of objects, each with `ref` and `amount_minor`"
+            }
+          ],
+          "response": [
+            {
+              "name": "report_id",
+              "required": true,
+              "spec": "string"
+            },
+            {
+              "name": "status",
+              "required": true,
+              "spec": "string, always `reported-not-final` on arrival (LA-IF-05)"
+            },
+            {
+              "name": "reconciled",
+              "required": true,
+              "spec": "boolean, always false on arrival"
+            },
+            {
+              "name": "bank_statement_required",
+              "required": true,
+              "spec": "boolean, always true"
+            }
+          ],
+          "authorized_by": "The Receptor's own identity. A report authorizes no payment and moves no money: Layer A never sits in the customer payment flow (LA-IF-06).",
+          "when_callee_is_down": "Answer the caller `dependency_down` (503, retriable). The caller keeps its task in its current state, records the attempt, and retries with the same idempotency key inside its retry limit. Nothing is reported as complete.",
+          "when_stopped": "Allowed while stopped: this call carries no authority to act and starts no new work. It is recorded like any other call.",
+          "errors": [
+            "invalid_request",
+            "unauthenticated",
+            "forbidden",
+            "idempotency_conflict",
+            "rate_limited",
+            "internal"
+          ],
+          "requirements": [
+            "LA-IF-01",
+            "LA-IF-05",
+            "LA-IF-06",
+            "LA-FIN-01",
+            "LA-FIN-02"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "LANE-MON",
+      "chip": "Monitoring / Health",
+      "style": "Orange, dashed",
+      "layer_a_owner": "E Monitoring & Health Controller",
+      "owner_package": "P1.06",
+      "direction": "Receptor to Core",
+      "carries": "Task status, KPIs, health, failures",
+      "basis": "Diagram; AMD-10",
+      "operations": [
+        {
+          "operation_id": "MON-01",
+          "method": "POST",
+          "path": "/v1/health-reports",
+          "caller": "Receptor",
+          "callee": "P1.06",
+          "purpose": "The Receptor reports its status, KPIs and failures on the monitoring lane.",
+          "request": [
+            {
+              "name": "Idempotency-Key",
+              "required": true,
+              "spec": "header, `idem_` + 26 base32. Required on every state-changing call"
+            },
+            {
+              "name": "receptor_id",
+              "required": true,
+              "spec": "string, `rcp_`"
+            },
+            {
+              "name": "status",
+              "required": true,
+              "spec": "string, `healthy`, `degraded`, `failing` or `offline`"
+            },
+            {
+              "name": "reported_at",
+              "required": true,
+              "spec": "RFC 3339 UTC with milliseconds"
+            },
+            {
+              "name": "kpis",
+              "required": false,
+              "spec": "object, name to number"
+            },
+            {
+              "name": "failures",
+              "required": false,
+              "spec": "array of objects, each with `task_id` and `reason`"
+            }
+          ],
+          "response": [
+            {
+              "name": "accepted",
+              "required": true,
+              "spec": "boolean"
+            },
+            {
+              "name": "escalated",
+              "required": true,
+              "spec": "boolean, true when a repeated-failure condition is met"
+            }
+          ],
+          "authorized_by": "The Receptor's own identity. A report gives E no authority to act on the Receptor (LA-MON-05).",
+          "when_callee_is_down": "Answer the caller `dependency_down` (503, retriable). The caller keeps its task in its current state, records the attempt, and retries with the same idempotency key inside its retry limit. Nothing is reported as complete.",
+          "when_stopped": "Allowed while stopped: this call carries no authority to act and starts no new work. It is recorded like any other call.",
+          "errors": [
+            "invalid_request",
+            "unauthenticated",
+            "idempotency_conflict",
+            "rate_limited",
+            "internal"
+          ],
+          "requirements": [
+            "LA-IF-01",
+            "LA-MON-01",
+            "LA-MON-02"
+          ]
+        },
+        {
+          "operation_id": "MON-02",
+          "method": "GET",
+          "path": "/v1/health",
+          "caller": "P1.06",
+          "callee": "Receptor",
+          "purpose": "E polls the Receptor's health endpoint, so an offline Receptor is reported as offline.",
+          "request": [],
+          "response": [
+            {
+              "name": "receptor_id",
+              "required": true,
+              "spec": "string"
+            },
+            {
+              "name": "status",
+              "required": true,
+              "spec": "string, as in MON-01"
+            },
+            {
+              "name": "checks",
+              "required": true,
+              "spec": "array of objects, each with `name` and `ok`"
+            }
+          ],
+          "authorized_by": "E's own component identity. A read only.",
+          "when_callee_is_down": "E records the Receptor as `offline` and reports it as offline rather than silent (LA-MON-06). It raises a repeated-failure condition if the poll keeps failing.",
+          "when_stopped": "Allowed while stopped: this call carries no authority to act and starts no new work. It is recorded like any other call.",
+          "errors": [
+            "unauthenticated",
+            "not_found",
+            "rate_limited",
+            "internal",
+            "dependency_down",
+            "timeout"
+          ],
+          "requirements": [
+            "LA-MON-01",
+            "LA-MON-06"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "LANE-STOP",
+      "chip": "STOP / PAUSE / RESUME (to all receptors)",
+      "style": "Red, solid",
+      "layer_a_owner": "A Governance Core",
+      "owner_package": "2A.05",
+      "direction": "Core to Receptor",
+      "carries": "Control commands, independent of AI reasoning",
+      "basis": "Diagram; AMD-5",
+      "operations": [
+        {
+          "operation_id": "STOP-01",
+          "method": "POST",
+          "path": "/v1/control",
+          "caller": "2A.06",
+          "callee": "Receptor",
+          "purpose": "The red path carries STOP, PAUSE and RESUME to every Receptor, with no LLM in its way.",
+          "request": [
+            {
+              "name": "Idempotency-Key",
+              "required": true,
+              "spec": "header, `idem_` + 26 base32. Required on every state-changing call"
+            },
+            {
+              "name": "command",
+              "required": true,
+              "spec": "string, `stop`, `pause` or `resume`"
+            },
+            {
+              "name": "receptor_id",
+              "required": true,
+              "spec": "string, `rcp_` or `all`"
+            },
+            {
+              "name": "issued_at",
+              "required": true,
+              "spec": "RFC 3339 UTC with milliseconds"
+            },
+            {
+              "name": "incident_id",
+              "required": false,
+              "spec": "string, `inc_`, required when the command follows a breach"
+            },
+            {
+              "name": "authorization_id",
+              "required": false,
+              "spec": "string, required on `resume` (LA-SAF-04)"
+            }
+          ],
+          "response": [
+            {
+              "name": "command",
+              "required": true,
+              "spec": "string, echoed"
+            },
+            {
+              "name": "applied",
+              "required": true,
+              "spec": "boolean"
+            },
+            {
+              "name": "applied_at",
+              "required": true,
+              "spec": "RFC 3339 UTC with milliseconds"
+            },
+            {
+              "name": "in_flight",
+              "required": true,
+              "spec": "array of strings, task ids that were already running when the command arrived"
+            }
+          ],
+          "authorized_by": "A, the Governance Core, on the Founder's command. Deterministic control code; no model decides it, and it works when every model and the app are down (LA-GOV-03, LA-DFC-04).",
+          "when_callee_is_down": "The bus retries on the red path and raises an incident. A Receptor that cannot be reached is treated as not stopped, reported as such, and isolated at the Tool Hub instead, so no new task reaches it.",
+          "when_stopped": "A STOP or PAUSE always applies, even while already stopped: the command is idempotent. A `resume` is refused with `forbidden` when it carries no authorization, and after a breach it needs an authorization naming the incident (LA-GOV-08, LA-SAF-04).",
+          "errors": [
+            "invalid_request",
+            "unauthenticated",
+            "forbidden",
+            "rate_limited",
+            "internal",
+            "dependency_down",
+            "timeout"
+          ],
+          "requirements": [
+            "LA-IF-03",
+            "LA-SAF-01",
+            "LA-SAF-03",
+            "LA-SAF-04",
+            "LA-GOV-03",
+            "LA-GOV-08",
+            "LA-DFC-04"
+          ]
+        }
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "id": "BND-01",
+      "path": "Founder, Dyson App, Entry Gateway",
+      "style": "Blue out, green back",
+      "meaning": "Voice or text instruction in; answer, report or response out",
+      "pairs": [
+        [
+          "Founder",
+          "P1.05"
+        ],
+        [
+          "P1.05",
+          "2A.03"
+        ]
+      ],
+      "operations": [
+        {
+          "operation_id": "GW-01",
+          "method": "POST",
+          "path": "/v1/sessions",
+          "caller": "P1.05",
+          "callee": "2A.03",
+          "purpose": "The Gateway authenticates the Founder for the session and issues a session token.",
+          "request": [
+            {
+              "name": "Idempotency-Key",
+              "required": true,
+              "spec": "header, `idem_` + 26 base32. Required on every state-changing call"
+            },
+            {
+              "name": "authenticator_assertion",
+              "required": true,
+              "spec": "object, the result of the Founder's own authentication. The app never holds or forwards a credential (LA-SEC-01)"
+            }
+          ],
+          "response": [
+            {
+              "name": "session_token",
+              "required": true,
+              "spec": "string, opaque, short-lived"
+            },
+            {
+              "name": "expires_at",
+              "required": true,
+              "spec": "RFC 3339 UTC with milliseconds"
+            },
+            {
+              "name": "subject",
+              "required": true,
+              "spec": "string, always `founder`"
+            }
+          ],
+          "authorized_by": "The Founder, authenticated at the Gateway for every session. The app holds no authority of its own (LA-APP-06, LA-SEC-03).",
+          "when_callee_is_down": "Answer the caller `dependency_down` (503, retriable). The caller shows the view as unavailable and says so plainly; it never shows stale data as current (LA-EVD-04, LA-MON-06).",
+          "when_stopped": "Sessions still open while the Core is stopped, so the Founder can see state and use the Direct Founder Controls. No new task is accepted (BND-03 is the path that is never blocked).",
+          "errors": [
+            "invalid_request",
+            "unauthenticated",
+            "rate_limited",
+            "internal",
+            "dependency_down"
+          ],
+          "requirements": [
+            "LA-GW-01",
+            "LA-GW-02",
+            "LA-SEC-03",
+            "LA-APP-06"
+          ]
+        },
+        {
+          "operation_id": "GW-02",
+          "method": "POST",
+          "path": "/v1/messages",
+          "caller": "P1.05",
+          "callee": "2A.03",
+          "purpose": "One Founder instruction in Hindi, English or Hinglish. The answer is an honest acknowledgment.",
+          "request": [
+            {
+              "name": "Idempotency-Key",
+              "required": true,
+              "spec": "header, `idem_` + 26 base32. Required on every state-changing call"
+            },
+            {
+              "name": "locale",
+              "required": true,
+              "spec": "string, `hi`, `en` or `hi-Latn` for Hinglish"
+            },
+            {
+              "name": "content",
+              "required": true,
+              "spec": "object, `text` or `audio_ref`"
+            },
+            {
+              "name": "transcription_uncertain",
+              "required": false,
+              "spec": "boolean, true when speech recognition was not confident (LA-APP-07)"
+            }
+          ],
+          "response": [
+            {
+              "name": "acknowledgment",
+              "required": true,
+              "spec": "string, `accepted` or `approval-needed`. Never a completion (LA-APP-04)"
+            },
+            {
+              "name": "task_id",
+              "required": false,
+              "spec": "string, `tsk_` when the instruction became a task"
+            },
+            {
+              "name": "thread_id",
+              "required": true,
+              "spec": "string, one history for voice and text (LA-APP-03)"
+            }
+          ],
+          "authorized_by": "The session token from GW-01.",
+          "when_callee_is_down": "Answer the caller `dependency_down` (503, retriable). The caller keeps its task in its current state, records the attempt, and retries with the same idempotency key inside its retry limit. Nothing is reported as complete.",
+          "when_stopped": "Refuse with `stopped` (409). No new work starts, and the refusal is written to the audit log. STOP is checked on every call, whatever the AI model does (LA-SAF-01, LA-SAF-02).",
+          "errors": [
+            "invalid_request",
+            "unauthenticated",
+            "idempotency_conflict",
+            "approval_needed",
+            "stopped",
+            "rate_limited",
+            "internal",
+            "dependency_down",
+            "timeout"
+          ],
+          "requirements": [
+            "LA-APP-02",
+            "LA-APP-03",
+            "LA-APP-04",
+            "LA-APP-07",
+            "LA-PERF-01",
+            "LA-GW-03"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "BND-02",
+      "path": "Entry Gateway and B",
+      "style": "Blue down, green up",
+      "meaning": "Gateway routes to the Conversation Engine; B's response returns to the Founder",
+      "pairs": [
+        [
+          "2A.03",
+          "2B.04"
+        ]
+      ],
+      "operations": [
+        {
+          "operation_id": "CONV-01",
+          "method": "POST",
+          "path": "/v1/conversation/turns",
+          "caller": "2A.03",
+          "callee": "2B.04",
+          "purpose": "The Gateway routes an authenticated instruction to B, which interprets it in thread context.",
+          "request": [
+            {
+              "name": "Idempotency-Key",
+              "required": true,
+              "spec": "header, `idem_` + 26 base32. Required on every state-changing call"
+            },
+            {
+              "name": "thread_id",
+              "required": true,
+              "spec": "string"
+            },
+            {
+              "name": "locale",
+              "required": true,
+              "spec": "string, as in GW-02"
+            },
+            {
+              "name": "content",
+              "required": true,
+              "spec": "object, `text` or a transcript of the audio"
+            },
+            {
+              "name": "transcription_uncertain",
+              "required": false,
+              "spec": "boolean, carried through from the app"
+            }
+          ],
+          "response": [
+            {
+              "name": "reply",
+              "required": true,
+              "spec": "string, what the Founder is told"
+            },
+            {
+              "name": "intent",
+              "required": true,
+              "spec": "string, `answer`, `clarify` or `proposed_action`"
+            },
+            {
+              "name": "proposed_action",
+              "required": false,
+              "spec": "object, present only for `proposed_action`, to be checked at BND-04"
+            },
+            {
+              "name": "completion_claimed",
+              "required": true,
+              "spec": "boolean, always false here (LA-CONV-07)"
+            }
+          ],
+          "authorized_by": "The Gateway, which has already authenticated the Founder. B holds no authority to execute.",
+          "when_callee_is_down": "Answer the caller `dependency_down` (503, retriable). The caller shows the view as unavailable and says so plainly; it never shows stale data as current (LA-EVD-04, LA-MON-06).",
+          "when_stopped": "Refuse with `stopped` (409). No new work starts, and the refusal is written to the audit log. STOP is checked on every call, whatever the AI model does (LA-SAF-01, LA-SAF-02).",
+          "errors": [
+            "invalid_request",
+            "unauthenticated",
+            "forbidden",
+            "idempotency_conflict",
+            "stopped",
+            "rate_limited",
+            "internal",
+            "dependency_down",
+            "timeout"
+          ],
+          "requirements": [
+            "LA-GW-03",
+            "LA-CONV-01",
+            "LA-CONV-03",
+            "LA-CONV-07"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "BND-03",
+      "path": "Direct Founder Controls to A",
+      "style": "Red",
+      "meaning": "Approve / Reject and Emergency STOP / PAUSE go straight to the Governance Core, not through the app or the normal flow",
+      "pairs": [
+        [
+          "2A.04",
+          "2A.05"
+        ]
+      ],
+      "operations": [
+        {
+          "operation_id": "DFC-01",
+          "method": "POST",
+          "path": "/v1/controls/decision",
+          "caller": "2A.04",
+          "callee": "2A.05",
+          "purpose": "The Founder approves or rejects one exact action. A Reject ends the task (open item 3).",
+          "request": [
+            {
+              "name": "Idempotency-Key",
+              "required": true,
+              "spec": "header, `idem_` + 26 base32. Required on every state-changing call"
+            },
+            {
+              "name": "approval_id",
+              "required": true,
+              "spec": "string, `apr_`"
+            },
+            {
+              "name": "decision",
+              "required": true,
+              "spec": "string, `approve` or `reject`"
+            },
+            {
+              "name": "bound_action_digest",
+              "required": true,
+              "spec": "string, the digest of the exact action shown to the Founder (LA-DFC-05)"
+            },
+            {
+              "name": "authenticator_assertion",
+              "required": true,
+              "spec": "object, the step-up authentication chosen at gate 3"
+            }
+          ],
+          "response": [
+            {
+              "name": "approval_id",
+              "required": true,
+              "spec": "string, echoed"
+            },
+            {
+              "name": "recorded_at",
+              "required": true,
+              "spec": "RFC 3339 UTC with milliseconds"
+            },
+            {
+              "name": "task_state",
+              "required": true,
+              "spec": "string, `running` on approve, `stopped` with `stop_reason` `reject` on reject"
+            },
+            {
+              "name": "approver",
+              "required": true,
+              "spec": "string, always `founder`"
+            }
+          ],
+          "authorized_by": "The Founder alone, on an independently authenticated path that touches no app and no LLM. No model, agent or Receptor can produce this call (LA-DFC-01, LA-GOV-02, LA-AMD-01).",
+          "when_callee_is_down": "The control path is the last thing allowed to fail. If A does not answer, the Controls raise an incident, keep the decision unsent, and show the Founder that it was not recorded. A decision is never assumed to have landed.",
+          "when_stopped": "Always allowed. An approval decision reaches A even while the Core is stopped: that is how a stop is lifted and how a rejected task is closed.",
+          "errors": [
+            "invalid_request",
+            "unauthenticated",
+            "forbidden",
+            "not_found",
+            "idempotency_conflict",
+            "internal",
+            "dependency_down",
+            "timeout"
+          ],
+          "requirements": [
+            "LA-DFC-01",
+            "LA-DFC-02",
+            "LA-DFC-03",
+            "LA-DFC-05",
+            "LA-GOV-02",
+            "LA-AMD-01"
+          ]
+        },
+        {
+          "operation_id": "DFC-02",
+          "method": "POST",
+          "path": "/v1/controls/emergency",
+          "caller": "2A.04",
+          "callee": "2A.05",
+          "purpose": "Emergency STOP or PAUSE, working whatever the models and the app are doing.",
+          "request": [
+            {
+              "name": "Idempotency-Key",
+              "required": true,
+              "spec": "header, `idem_` + 26 base32. Required on every state-changing call"
+            },
+            {
+              "name": "command",
+              "required": true,
+              "spec": "string, `stop`, `pause` or `resume`"
+            },
+            {
+              "name": "scope",
+              "required": true,
+              "spec": "string, `all` or `receptor`"
+            },
+            {
+              "name": "receptor_id",
+              "required": false,
+              "spec": "string, required when scope is `receptor`"
+            },
+            {
+              "name": "authenticator_assertion",
+              "required": true,
+              "spec": "object, the step-up authentication chosen at gate 3"
+            },
+            {
+              "name": "incident_id",
+              "required": false,
+              "spec": "string, `inc_`, required to resume after a breach"
+            }
+          ],
+          "response": [
+            {
+              "name": "incident_id",
+              "required": true,
+              "spec": "string, `inc_`"
+            },
+            {
+              "name": "applied_at",
+              "required": true,
+              "spec": "RFC 3339 UTC with milliseconds"
+            },
+            {
+              "name": "reached",
+              "required": true,
+              "spec": "array of strings, the components and Receptors the command reached"
+            },
+            {
+              "name": "not_reached",
+              "required": true,
+              "spec": "array of strings, reported plainly rather than assumed stopped"
+            }
+          ],
+          "authorized_by": "The Founder alone, independently authenticated. Deterministic: no LLM in the path (LA-GOV-03).",
+          "when_callee_is_down": "A STOP that cannot be recorded is still carried out: the bus applies it and the failure to record raises an incident. A resume is never applied when A cannot be reached.",
+          "when_stopped": "Always allowed, and idempotent: a STOP on an already stopped system is accepted.",
+          "errors": [
+            "invalid_request",
+            "unauthenticated",
+            "forbidden",
+            "internal",
+            "dependency_down",
+            "timeout"
+          ],
+          "requirements": [
+            "LA-DFC-01",
+            "LA-DFC-04",
+            "LA-GOV-03",
+            "LA-SAF-01",
+            "LA-SAF-04"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "BND-04",
+      "path": "A and B",
+      "style": "Blue, two-way",
+      "meaning": "Policy / approval checks",
+      "pairs": [
+        [
+          "2B.04",
+          "2A.05"
+        ]
+      ],
+      "operations": [
+        {
+          "operation_id": "POL-01",
+          "method": "POST",
+          "path": "/v1/policy/checks",
+          "caller": "2B.04",
+          "callee": "2A.05",
+          "purpose": "B asks A whether a prepared action is allowed, before it is prepared for execution.",
+          "request": [
+            {
+              "name": "Idempotency-Key",
+              "required": true,
+              "spec": "header, `idem_` + 26 base32. Required on every state-changing call"
+            },
+            {
+              "name": "proposed_action",
+              "required": true,
+              "spec": "object, what would be done, with its tools and scope"
+            },
+            {
+              "name": "estimated_spend_minor",
+              "required": false,
+              "spec": "integer, in the currency's minor unit"
+            },
+            {
+              "name": "receptor_id",
+              "required": false,
+              "spec": "string, `rcp_` when the action touches a Receptor"
+            },
+            {
+              "name": "thread_id",
+              "required": true,
+              "spec": "string"
+            }
+          ],
+          "response": [
+            {
+              "name": "verdict",
+              "required": true,
+              "spec": "string, `allow`, `approval-needed` or `deny`"
+            },
+            {
+              "name": "policy_version",
+              "required": true,
+              "spec": "string, the version of the rule that decided it (LA-GOV-01)"
+            },
+            {
+              "name": "approval_id",
+              "required": false,
+              "spec": "string, `apr_` created when the verdict is `approval-needed`"
+            },
+            {
+              "name": "bound_action_digest",
+              "required": false,
+              "spec": "string, present with an approval_id: the digest of the exact action the approval is bound to, which the Founder's controls must send back (LA-DFC-05)"
+            },
+            {
+              "name": "reasons",
+              "required": true,
+              "spec": "array of strings, which rule decided, for the audit log"
+            }
+          ],
+          "authorized_by": "B's own component identity. The verdict is A's alone, and A refuses a verdict from any model, agent or Receptor (LA-GOV-02). Every financial action stays blocked until an approval exists (LA-GOV-05).",
+          "when_callee_is_down": "B must not proceed. It answers the Founder that the check could not be made, and the task stays where it is. A missing policy check is never read as an allow.",
+          "when_stopped": "Refuse with `stopped` (409). No new work starts, and the refusal is written to the audit log. STOP is checked on every call, whatever the AI model does (LA-SAF-01, LA-SAF-02).",
+          "errors": [
+            "invalid_request",
+            "unauthenticated",
+            "forbidden",
+            "idempotency_conflict",
+            "stopped",
+            "rate_limited",
+            "internal",
+            "dependency_down",
+            "timeout"
+          ],
+          "requirements": [
+            "LA-GOV-01",
+            "LA-GOV-02",
+            "LA-GOV-04",
+            "LA-GOV-05",
+            "LA-CONV-06",
+            "LA-AMD-01",
+            "LA-AMD-02"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "BND-05",
+      "path": "B, C, D, E (neighbors)",
+      "style": "Blue right, green left",
+      "meaning": "Neighboring cards exchange requests and responses",
+      "pairs": [
+        [
+          "2B.04",
+          "2B.03"
+        ],
+        [
+          "2B.04",
+          "2A.09"
+        ],
+        [
+          "2A.09",
+          "P1.06"
+        ]
+      ],
+      "operations": [
+        {
+          "operation_id": "RTR-01",
+          "method": "POST",
+          "path": "/v1/model/completions",
+          "caller": "2B.04",
+          "callee": "2B.03",
+          "purpose": "B reaches an external model only through C, inside cost and token limits.",
+          "request": [
+            {
+              "name": "Idempotency-Key",
+              "required": true,
+              "spec": "header, `idem_` + 26 base32. Required on every state-changing call"
+            },
+            {
+              "name": "purpose",
+              "required": true,
+              "spec": "string, what the call is for, used to pick a model"
+            },
+            {
+              "name": "input",
+              "required": true,
+              "spec": "object, the prompt material. C applies the gate 6 redaction rules before it leaves"
+            },
+            {
+              "name": "max_cost_minor",
+              "required": false,
+              "spec": "integer, the ceiling for this call"
+            },
+            {
+              "name": "task_id",
+              "required": false,
+              "spec": "string, `tsk_` when the call belongs to a task"
+            }
+          ],
+          "response": [
+            {
+              "name": "model_id",
+              "required": true,
+              "spec": "string, the approved model that answered"
+            },
+            {
+              "name": "output",
+              "required": true,
+              "spec": "object, the model's answer"
+            },
+            {
+              "name": "cost_minor",
+              "required": true,
+              "spec": "integer, what it cost"
+            },
+            {
+              "name": "redaction_applied",
+              "required": true,
+              "spec": "boolean, true when redaction rules changed the input (LA-RTR-07)"
+            },
+            {
+              "name": "fallback_used",
+              "required": true,
+              "spec": "boolean, true when the first choice failed (LA-RTR-04)"
+            }
+          ],
+          "authorized_by": "B's own component identity. C is the only approved path to an external model, and no model access exists outside governance (LA-RTR-01).",
+          "when_callee_is_down": "C answers `dependency_down` only after its tested fallback has also failed. Task state and memory survive either way (LA-RTR-04, LA-REL-06).",
+          "when_stopped": "Refuse with `stopped` (409). No new work starts, and the refusal is written to the audit log. STOP is checked on every call, whatever the AI model does (LA-SAF-01, LA-SAF-02).",
+          "errors": [
+            "invalid_request",
+            "unauthenticated",
+            "forbidden",
+            "idempotency_conflict",
+            "stopped",
+            "spend_limit",
+            "rate_limited",
+            "internal",
+            "dependency_down",
+            "timeout"
+          ],
+          "requirements": [
+            "LA-RTR-01",
+            "LA-RTR-02",
+            "LA-RTR-04",
+            "LA-RTR-05",
+            "LA-RTR-07",
+            "LA-SEC-07"
+          ]
+        },
+        {
+          "operation_id": "ORC-01",
+          "method": "POST",
+          "path": "/v1/tasks",
+          "caller": "2B.04",
+          "callee": "2A.09",
+          "purpose": "B hands a prepared instruction to D, which mints the task and owns its state from then on.",
+          "request": [
+            {
+              "name": "Idempotency-Key",
+              "required": true,
+              "spec": "header, `idem_` + 26 base32. Required on every state-changing call"
+            },
+            {
+              "name": "instruction",
+              "required": true,
+              "spec": "object, the prepared action"
+            },
+            {
+              "name": "thread_id",
+              "required": true,
+              "spec": "string"
+            },
+            {
+              "name": "approval_id",
+              "required": false,
+              "spec": "string, `apr_` when BND-04 answered `approval-needed`"
+            },
+            {
+              "name": "receptor_id",
+              "required": false,
+              "spec": "string, `rcp_` when the task touches a Receptor"
+            }
+          ],
+          "response": [
+            {
+              "name": "task_id",
+              "required": true,
+              "spec": "string, `tsk_`, minted by D and by nobody else"
+            },
+            {
+              "name": "state",
+              "required": true,
+              "spec": "string, `accepted` or `approval-needed`"
+            },
+            {
+              "name": "created_at",
+              "required": true,
+              "spec": "RFC 3339 UTC with milliseconds"
+            }
+          ],
+          "authorized_by": "B's own component identity. B prepares and never executes (LA-CONV-02); D routes all tool use through G (LA-ORC-05).",
+          "when_callee_is_down": "Answer the caller `dependency_down` (503, retriable). The caller keeps its task in its current state, records the attempt, and retries with the same idempotency key inside its retry limit. Nothing is reported as complete.",
+          "when_stopped": "Refuse with `stopped` (409). No new work starts, and the refusal is written to the audit log. STOP is checked on every call, whatever the AI model does (LA-SAF-01, LA-SAF-02).",
+          "errors": [
+            "invalid_request",
+            "unauthenticated",
+            "forbidden",
+            "idempotency_conflict",
+            "approval_needed",
+            "stopped",
+            "rate_limited",
+            "internal",
+            "dependency_down",
+            "timeout"
+          ],
+          "requirements": [
+            "LA-CONV-02",
+            "LA-ORC-01",
+            "LA-ORC-02",
+            "LA-ORC-03",
+            "LA-REL-01",
+            "LA-REL-02"
+          ]
+        },
+        {
+          "operation_id": "MON-03",
+          "method": "POST",
+          "path": "/v1/task-status",
+          "caller": "2A.09",
+          "callee": "P1.06",
+          "purpose": "D tells E a task's state, so monitoring and the dashboard can show the truth.",
+          "request": [
+            {
+              "name": "Idempotency-Key",
+              "required": true,
+              "spec": "header, `idem_` + 26 base32. Required on every state-changing call"
+            },
+            {
+              "name": "task_id",
+              "required": true,
+              "spec": "string, `tsk_`"
+            },
+            {
+              "name": "state",
+              "required": true,
+              "spec": "string, one of the eight task states"
+            },
+            {
+              "name": "stop_reason",
+              "required": false,
+              "spec": "string, present when the state is `stopped`"
+            },
+            {
+              "name": "receptor_id",
+              "required": false,
+              "spec": "string, `rcp_`"
+            },
+            {
+              "name": "updated_at",
+              "required": true,
+              "spec": "RFC 3339 UTC with milliseconds"
+            }
+          ],
+          "response": [
+            {
+              "name": "accepted",
+              "required": true,
+              "spec": "boolean"
+            }
+          ],
+          "authorized_by": "D's own component identity. E observes and escalates; it never acts (LA-MON-05).",
+          "when_callee_is_down": "D keeps the state in its own durable store and retries. A monitoring outage never changes a task's state or stops the work.",
+          "when_stopped": "Allowed while stopped: this call carries no authority to act and starts no new work. It is recorded like any other call.",
+          "errors": [
+            "invalid_request",
+            "unauthenticated",
+            "idempotency_conflict",
+            "rate_limited",
+            "internal",
+            "dependency_down"
+          ],
+          "requirements": [
+            "LA-MON-02",
+            "LA-MON-04",
+            "LA-ORC-01"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "BND-06",
+      "path": "Hermes and C",
+      "style": "Blue, two-way",
+      "meaning": "Approved model access, governed",
+      "pairs": [
+        [
+          "2B.05",
+          "2B.03"
+        ]
+      ],
+      "operations": [
+        {
+          "operation_id": "HER-01",
+          "method": "POST",
+          "path": "/v1/model/completions",
+          "caller": "2B.05",
+          "callee": "2B.03",
+          "purpose": "Hermes reaches a model only through C, with its own identity and its own limits.",
+          "request": [
+            {
+              "name": "Idempotency-Key",
+              "required": true,
+              "spec": "header, `idem_` + 26 base32. Required on every state-changing call"
+            },
+            {
+              "name": "purpose",
+              "required": true,
+              "spec": "string"
+            },
+            {
+              "name": "input",
+              "required": true,
+              "spec": "object, redaction applies as in RTR-01"
+            },
+            {
+              "name": "max_cost_minor",
+              "required": false,
+              "spec": "integer"
+            },
+            {
+              "name": "task_id",
+              "required": false,
+              "spec": "string, `tsk_`"
+            }
+          ],
+          "response": [
+            {
+              "name": "model_id",
+              "required": true,
+              "spec": "string"
+            },
+            {
+              "name": "output",
+              "required": true,
+              "spec": "object"
+            },
+            {
+              "name": "cost_minor",
+              "required": true,
+              "spec": "integer"
+            },
+            {
+              "name": "redaction_applied",
+              "required": true,
+              "spec": "boolean"
+            },
+            {
+              "name": "fallback_used",
+              "required": true,
+              "spec": "boolean"
+            }
+          ],
+          "authorized_by": "Hermes's own component identity, which is separate from B's and carries no governance rights. C refuses a call from Hermes that is outside Hermes's approved scope (LA-HER-02, LA-RTR-01).",
+          "when_callee_is_down": "As in RTR-01. Hermes has no other path to a model and does not fall back on its own.",
+          "when_stopped": "Refuse with `stopped` (409). No new work starts, and the refusal is written to the audit log. STOP is checked on every call, whatever the AI model does (LA-SAF-01, LA-SAF-02).",
+          "errors": [
+            "invalid_request",
+            "unauthenticated",
+            "forbidden",
+            "idempotency_conflict",
+            "stopped",
+            "spend_limit",
+            "rate_limited",
+            "internal",
+            "dependency_down",
+            "timeout"
+          ],
+          "requirements": [
+            "LA-HER-01",
+            "LA-HER-02",
+            "LA-RTR-01",
+            "LA-DEP-01"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "BND-07",
+      "path": "D and G; Hermes and G",
+      "style": "Blue, two-way",
+      "meaning": "All tool use passes through the hub",
+      "pairs": [
+        [
+          "2A.09",
+          "2A.07"
+        ],
+        [
+          "2B.05",
+          "2A.07"
+        ]
+      ],
+      "operations": [
+        {
+          "operation_id": "TOOL-01",
+          "method": "POST",
+          "path": "/v1/tool-calls",
+          "caller": "2A.09 or 2B.05",
+          "callee": "2A.07",
+          "purpose": "Every tool call, from D or from Hermes, is authorized one call at a time by G.",
+          "request": [
+            {
+              "name": "Idempotency-Key",
+              "required": true,
+              "spec": "header, `idem_` + 26 base32. Required on every state-changing call"
+            },
+            {
+              "name": "tool_id",
+              "required": true,
+              "spec": "string, `tool_`, an entry in G's governed registry"
+            },
+            {
+              "name": "arguments",
+              "required": true,
+              "spec": "object, the call's own arguments"
+            },
+            {
+              "name": "task_id",
+              "required": true,
+              "spec": "string, `tsk_`"
+            },
+            {
+              "name": "receptor_id",
+              "required": false,
+              "spec": "string, `rcp_` when the call acts on a Receptor"
+            },
+            {
+              "name": "estimated_spend_minor",
+              "required": false,
+              "spec": "integer"
+            }
+          ],
+          "response": [
+            {
+              "name": "tool_call_id",
+              "required": true,
+              "spec": "string"
+            },
+            {
+              "name": "result",
+              "required": true,
+              "spec": "object, present on success"
+            },
+            {
+              "name": "checks",
+              "required": true,
+              "spec": "object, the five checks and their outcome: identity, scope, risk and spend, approval, STOP state (LA-TOOL-01)"
+            },
+            {
+              "name": "audited",
+              "required": true,
+              "spec": "boolean, always true, on success and on refusal (LA-TOOL-04)"
+            }
+          ],
+          "authorized_by": "G alone, and deterministically: no LLM sits in its decision path (LA-TOOL-07). G is the only path to any tool, API, plugin or MCP connector, for D and for Hermes alike (LA-TOOL-02, LA-HER-03).",
+          "when_callee_is_down": "The caller gets `dependency_down`. It does not reach the tool another way: there is no other way. The task stays in its state and the attempt is recorded.",
+          "when_stopped": "Refuse with `stopped` (409) and audit the refusal. G checks the STOP state on every single call, so a stop takes effect on the next call with no restart (LA-SAF-02).",
+          "errors": [
+            "invalid_request",
+            "unauthenticated",
+            "forbidden",
+            "idempotency_conflict",
+            "approval_needed",
+            "stopped",
+            "not_admitted",
+            "spend_limit",
+            "rate_limited",
+            "internal",
+            "dependency_down",
+            "timeout"
+          ],
+          "requirements": [
+            "LA-TOOL-01",
+            "LA-TOOL-02",
+            "LA-TOOL-04",
+            "LA-TOOL-06",
+            "LA-TOOL-07",
+            "LA-SAF-02",
+            "LA-HER-03"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "BND-08",
+      "path": "F, G, H, I (neighbors)",
+      "style": "Blue right, green left",
+      "meaning": "Neighboring cards exchange requests and responses",
+      "pairs": [
+        [
+          "2B.06",
+          "2B.02"
+        ],
+        [
+          "2B.08",
+          "2B.02"
+        ],
+        [
+          "2B.06",
+          "2A.07"
+        ]
+      ],
+      "operations": [
+        {
+          "operation_id": "EVD-01",
+          "method": "POST",
+          "path": "/v1/evidence",
+          "caller": "2B.06",
+          "callee": "2B.02",
+          "purpose": "F writes an evidence record at its exact AMD-3 stage, with the failed evidence kept.",
+          "request": [
+            {
+              "name": "Idempotency-Key",
+              "required": true,
+              "spec": "header, `idem_` + 26 base32. Required on every state-changing call"
+            },
+            {
+              "name": "capability",
+              "required": true,
+              "spec": "string, what was tested"
+            },
+            {
+              "name": "provider",
+              "required": true,
+              "spec": "string, by whom"
+            },
+            {
+              "name": "stage",
+              "required": true,
+              "spec": "integer, 1 to 8, the AMD-3 stage reached"
+            },
+            {
+              "name": "environment",
+              "required": true,
+              "spec": "string, where it ran"
+            },
+            {
+              "name": "observed_at",
+              "required": true,
+              "spec": "RFC 3339 UTC with milliseconds"
+            },
+            {
+              "name": "expires_at",
+              "required": false,
+              "spec": "RFC 3339 UTC with milliseconds"
+            },
+            {
+              "name": "outcome",
+              "required": true,
+              "spec": "string, `pass` or `fail`. A failure is kept, never dropped"
+            },
+            {
+              "name": "task_id",
+              "required": false,
+              "spec": "string, `tsk_`"
+            },
+            {
+              "name": "detail",
+              "required": true,
+              "spec": "object, what was actually run and seen"
+            }
+          ],
+          "response": [
+            {
+              "name": "evidence_id",
+              "required": true,
+              "spec": "string, `evd_`"
+            },
+            {
+              "name": "stage",
+              "required": true,
+              "spec": "integer, echoed"
+            },
+            {
+              "name": "immutable",
+              "required": true,
+              "spec": "boolean, always true: a record is appended, never edited"
+            }
+          ],
+          "authorized_by": "F's own component identity. I is a controlled store, not an authority: writing evidence grants no permission (LA-MEM-08).",
+          "when_callee_is_down": "F holds the evidence in its own queue and retries. It never reports a verification as done while the record is unwritten.",
+          "when_stopped": "Allowed while stopped: this call carries no authority to act and starts no new work. It is recorded like any other call.",
+          "errors": [
+            "invalid_request",
+            "unauthenticated",
+            "forbidden",
+            "idempotency_conflict",
+            "rate_limited",
+            "internal",
+            "dependency_down"
+          ],
+          "requirements": [
+            "LA-EVD-03",
+            "LA-QA-06",
+            "LA-MEM-08",
+            "LA-MEM-07"
+          ]
+        },
+        {
+          "operation_id": "FIN-02",
+          "method": "POST",
+          "path": "/v1/ledger-entries",
+          "caller": "2B.08",
+          "callee": "2B.02",
+          "purpose": "H writes a ledger entry. It is final only when a bank statement has matched it.",
+          "request": [
+            {
+              "name": "Idempotency-Key",
+              "required": true,
+              "spec": "header, `idem_` + 26 base32. Required on every state-changing call"
+            },
+            {
+              "name": "receptor_id",
+              "required": true,
+              "spec": "string, `rcp_`"
+            },
+            {
+              "name": "amount_minor",
+              "required": true,
+              "spec": "integer"
+            },
+            {
+              "name": "currency",
+              "required": true,
+              "spec": "string"
+            },
+            {
+              "name": "kind",
+              "required": true,
+              "spec": "string, `revenue-reported`, `revenue-verified` or `payment-record`"
+            },
+            {
+              "name": "statement_id",
+              "required": false,
+              "spec": "string, required for `revenue-verified`"
+            },
+            {
+              "name": "occurred_at",
+              "required": true,
+              "spec": "RFC 3339 UTC with milliseconds"
+            }
+          ],
+          "response": [
+            {
+              "name": "entry_id",
+              "required": true,
+              "spec": "string"
+            },
+            {
+              "name": "final",
+              "required": true,
+              "spec": "boolean, true only for `revenue-verified` (LA-FIN-02)"
+            }
+          ],
+          "authorized_by": "H's own component identity. Per-Receptor isolation applies: an entry is scoped to its Receptor (LA-IF-07, LA-MEM-04).",
+          "when_callee_is_down": "Answer the caller `dependency_down` (503, retriable). The caller keeps its task in its current state, records the attempt, and retries with the same idempotency key inside its retry limit. Nothing is reported as complete.",
+          "when_stopped": "Allowed while stopped: this call carries no authority to act and starts no new work. It is recorded like any other call.",
+          "errors": [
+            "invalid_request",
+            "unauthenticated",
+            "forbidden",
+            "idempotency_conflict",
+            "rate_limited",
+            "internal",
+            "dependency_down"
+          ],
+          "requirements": [
+            "LA-FIN-02",
+            "LA-FIN-05",
+            "LA-FIN-06",
+            "LA-IF-07",
+            "LA-MEM-04"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "BND-09",
+      "path": "J and I",
+      "style": "Blue, green",
+      "meaning": "Dashboard asks (read); memory answers with verified data",
+      "pairs": [
+        [
+          "P1.07",
+          "2B.02"
+        ]
+      ],
+      "operations": [
+        {
+          "operation_id": "DASH-01",
+          "method": "GET",
+          "path": "/v1/financial-views/{view}",
+          "caller": "P1.07",
+          "callee": "2B.02",
+          "purpose": "The dashboard reads verified financial data. There is no write path and no action path.",
+          "request": [
+            {
+              "name": "view",
+              "required": false,
+              "spec": "path parameter, `revenue`, `payments`, `profitability`, `receptor-performance` or `reconciliation-status`"
+            },
+            {
+              "name": "receptor_id",
+              "required": false,
+              "spec": "query, `rcp_` to scope to one Receptor"
+            },
+            {
+              "name": "period",
+              "required": false,
+              "spec": "query, `YYYY-MM-DD` to `YYYY-MM-DD`"
+            }
+          ],
+          "response": [
+            {
+              "name": "rows",
+              "required": true,
+              "spec": "array of objects, the view's data"
+            },
+            {
+              "name": "verified_only",
+              "required": true,
+              "spec": "boolean, always true"
+            },
+            {
+              "name": "as_of",
+              "required": true,
+              "spec": "RFC 3339 UTC with milliseconds"
+            },
+            {
+              "name": "unverified_excluded",
+              "required": true,
+              "spec": "integer, how many rows were left out for want of verification"
+            }
+          ],
+          "authorized_by": "J's own read-only component identity. J has no authority to execute actions and no write path into Core controls (LA-DASH-02). It never reaches the bank (LA-DASH-03).",
+          "when_callee_is_down": "Answer the caller `dependency_down` (503, retriable). The caller shows the view as unavailable and says so plainly; it never shows stale data as current (LA-EVD-04, LA-MON-06).",
+          "when_stopped": "Allowed while stopped: this call carries no authority to act and starts no new work. It is recorded like any other call.",
+          "errors": [
+            "invalid_request",
+            "unauthenticated",
+            "forbidden",
+            "not_found",
+            "rate_limited",
+            "internal",
+            "dependency_down",
+            "timeout"
+          ],
+          "requirements": [
+            "LA-DASH-01",
+            "LA-DASH-02",
+            "LA-DASH-03",
+            "LA-DASH-04",
+            "LA-MEM-08"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "BND-10",
+      "path": "D and I",
+      "style": "Blue, two-way",
+      "meaning": "State and evidence",
+      "pairs": [
+        [
+          "2A.09",
+          "2B.02"
+        ]
+      ],
+      "operations": [
+        {
+          "operation_id": "STATE-01",
+          "method": "PUT",
+          "path": "/v1/task-state",
+          "caller": "2A.09",
+          "callee": "2B.02",
+          "purpose": "D records a task's state and the evidence it rests on, durably.",
+          "request": [
+            {
+              "name": "Idempotency-Key",
+              "required": true,
+              "spec": "header, `idem_` + 26 base32. Required on every state-changing call"
+            },
+            {
+              "name": "task_id",
+              "required": true,
+              "spec": "string, `tsk_`"
+            },
+            {
+              "name": "state",
+              "required": true,
+              "spec": "string, one of the eight task states"
+            },
+            {
+              "name": "stop_reason",
+              "required": false,
+              "spec": "string, required when the state is `stopped`"
+            },
+            {
+              "name": "evidence_ids",
+              "required": true,
+              "spec": "array of strings, `evd_`. Required and non-empty for `completed-verified`"
+            },
+            {
+              "name": "updated_at",
+              "required": true,
+              "spec": "RFC 3339 UTC with milliseconds"
+            }
+          ],
+          "response": [
+            {
+              "name": "recorded_at",
+              "required": true,
+              "spec": "RFC 3339 UTC with milliseconds"
+            },
+            {
+              "name": "state",
+              "required": true,
+              "spec": "string, echoed"
+            }
+          ],
+          "authorized_by": "D's own component identity. Only D writes a task's state; no other component may (task-state contract, section 6).",
+          "when_callee_is_down": "D keeps the state in its own durable queue and retries. Work continues when the voice session closes (LA-ORC-02, LA-REL-01).",
+          "when_stopped": "Allowed while stopped: this call carries no authority to act and starts no new work. It is recorded like any other call.",
+          "errors": [
+            "invalid_request",
+            "unauthenticated",
+            "forbidden",
+            "idempotency_conflict",
+            "not_verified",
+            "rate_limited",
+            "internal",
+            "dependency_down"
+          ],
+          "requirements": [
+            "LA-ORC-07",
+            "LA-ORC-06",
+            "LA-MEM-08",
+            "LA-REL-01"
+          ]
+        },
+        {
+          "operation_id": "STATE-02",
+          "method": "GET",
+          "path": "/v1/tasks/{task_id}/evidence",
+          "caller": "2A.09",
+          "callee": "2B.02",
+          "purpose": "D reads back the evidence for a task before it may mark it completed-verified.",
+          "request": [
+            {
+              "name": "task_id",
+              "required": false,
+              "spec": "path parameter, `tsk_`"
+            }
+          ],
+          "response": [
+            {
+              "name": "evidence",
+              "required": true,
+              "spec": "array of objects, each with `evidence_id`, `stage`, `outcome` and `observed_at`"
+            },
+            {
+              "name": "verified_by",
+              "required": true,
+              "spec": "string, `2B.06` or null. D may not mark a task verified on a null"
+            }
+          ],
+          "authorized_by": "D's own component identity. A read only.",
+          "when_callee_is_down": "Answer the caller `dependency_down` (503, retriable). The caller shows the view as unavailable and says so plainly; it never shows stale data as current (LA-EVD-04, LA-MON-06).",
+          "when_stopped": "Allowed while stopped: this call carries no authority to act and starts no new work. It is recorded like any other call.",
+          "errors": [
+            "unauthenticated",
+            "forbidden",
+            "not_found",
+            "rate_limited",
+            "internal",
+            "dependency_down"
+          ],
+          "requirements": [
+            "LA-ORC-06",
+            "LA-IF-04",
+            "LA-EVD-01"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "BND-11",
+      "path": "A to G, Hermes and all Receptors",
+      "style": "Red",
+      "meaning": "STOP / PAUSE / RESUME bus",
+      "pairs": [
+        [
+          "2A.06",
+          "2A.07"
+        ],
+        [
+          "2A.06",
+          "2B.05"
+        ],
+        [
+          "2A.07",
+          "2A.06"
+        ]
+      ],
+      "operations": [
+        {
+          "operation_id": "BUS-01",
+          "method": "POST",
+          "path": "/v1/stop-state",
+          "caller": "2A.06",
+          "callee": "2A.07 or 2B.05",
+          "purpose": "The bus pushes the current stop state to the Tool Hub and to Hermes.",
+          "request": [
+            {
+              "name": "Idempotency-Key",
+              "required": true,
+              "spec": "header, `idem_` + 26 base32. Required on every state-changing call"
+            },
+            {
+              "name": "command",
+              "required": true,
+              "spec": "string, `stop`, `pause` or `resume`"
+            },
+            {
+              "name": "scope",
+              "required": true,
+              "spec": "string, `all` or `receptor`"
+            },
+            {
+              "name": "receptor_id",
+              "required": false,
+              "spec": "string, `rcp_` when scope is `receptor`"
+            },
+            {
+              "name": "incident_id",
+              "required": false,
+              "spec": "string, `inc_`"
+            },
+            {
+              "name": "authorization_id",
+              "required": false,
+              "spec": "string, required on `resume`"
+            },
+            {
+              "name": "issued_at",
+              "required": true,
+              "spec": "RFC 3339 UTC with milliseconds"
+            }
+          ],
+          "response": [
+            {
+              "name": "applied_at",
+              "required": true,
+              "spec": "RFC 3339 UTC with milliseconds"
+            },
+            {
+              "name": "in_flight",
+              "required": true,
+              "spec": "array of strings, what was running when it arrived"
+            },
+            {
+              "name": "self_resume_possible",
+              "required": true,
+              "spec": "boolean, always false for Hermes (LA-HER-05)"
+            }
+          ],
+          "authorized_by": "A, the Governance Core, through the bus. Deterministic control code, no LLM in the path, and it keeps working when B, C and Hermes are down (LA-DEP-02).",
+          "when_callee_is_down": "The bus retries and raises an incident. A component that cannot be told is treated as not stopped and reported as such; G refuses its calls instead, so nothing new runs.",
+          "when_stopped": "Always allowed and idempotent, as in STOP-01.",
+          "errors": [
+            "invalid_request",
+            "unauthenticated",
+            "forbidden",
+            "internal",
+            "dependency_down",
+            "timeout"
+          ],
+          "requirements": [
+            "LA-GOV-03",
+            "LA-SAF-01",
+            "LA-HER-05",
+            "LA-DEP-02",
+            "LA-IF-03"
+          ]
+        },
+        {
+          "operation_id": "BUS-02",
+          "method": "GET",
+          "path": "/v1/stop-state",
+          "caller": "2A.07",
+          "callee": "2A.06",
+          "purpose": "G reads the current stop state. It does this on every single tool call.",
+          "request": [
+            {
+              "name": "receptor_id",
+              "required": false,
+              "spec": "query, `rcp_` to ask about one Receptor"
+            }
+          ],
+          "response": [
+            {
+              "name": "stopped",
+              "required": true,
+              "spec": "boolean"
+            },
+            {
+              "name": "scope",
+              "required": true,
+              "spec": "string, `all`, `receptor` or `none`"
+            },
+            {
+              "name": "stop_reason",
+              "required": false,
+              "spec": "string, `pause`, `stop` or `breach` when stopped"
+            },
+            {
+              "name": "as_of",
+              "required": true,
+              "spec": "RFC 3339 UTC with milliseconds"
+            }
+          ],
+          "authorized_by": "G's own component identity. A read only.",
+          "when_callee_is_down": "G treats an unreachable bus as stopped and refuses the call with `stopped`. A STOP that cannot be read is never read as a go-ahead.",
+          "when_stopped": "Always allowed, and it is the call that matters most while stopped: this is how G learns that a stop is in force. It is a read, starts no work and carries no authority.",
+          "errors": [
+            "unauthenticated",
+            "rate_limited",
+            "internal",
+            "dependency_down",
+            "timeout"
+          ],
+          "requirements": [
+            "LA-SAF-02",
+            "LA-TOOL-01",
+            "LA-GOV-03"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "BND-12",
+      "path": "E to A and J; Receptors to E",
+      "style": "Orange, dashed",
+      "meaning": "Escalation; monitoring and health status",
+      "pairs": [
+        [
+          "P1.06",
+          "2A.05"
+        ],
+        [
+          "P1.07",
+          "P1.06"
+        ]
+      ],
+      "operations": [
+        {
+          "operation_id": "ESC-01",
+          "method": "POST",
+          "path": "/v1/escalations",
+          "caller": "P1.06",
+          "callee": "2A.05",
+          "purpose": "E escalates a repeated-failure or pause condition. A decides what happens; E does not.",
+          "request": [
+            {
+              "name": "Idempotency-Key",
+              "required": true,
+              "spec": "header, `idem_` + 26 base32. Required on every state-changing call"
+            },
+            {
+              "name": "receptor_id",
+              "required": true,
+              "spec": "string, `rcp_`"
+            },
+            {
+              "name": "condition",
+              "required": true,
+              "spec": "string, `repeated-failure`, `pause-condition` or `offline`"
+            },
+            {
+              "name": "evidence_ref",
+              "required": true,
+              "spec": "string, where the observations can be read"
+            },
+            {
+              "name": "observed_at",
+              "required": true,
+              "spec": "RFC 3339 UTC with milliseconds"
+            }
+          ],
+          "response": [
+            {
+              "name": "escalation_id",
+              "required": true,
+              "spec": "string"
+            },
+            {
+              "name": "decision_owner",
+              "required": true,
+              "spec": "string, always `2A.05`"
+            },
+            {
+              "name": "action_taken",
+              "required": true,
+              "spec": "string, always `none` at this point: Governance decides (LA-MON-05)"
+            }
+          ],
+          "authorized_by": "E's own component identity. E has no authority to act on a Receptor; it observes and escalates.",
+          "when_callee_is_down": "E keeps the escalation in its own queue, retries, and shows the condition as unescalated so that it is visible rather than silently dropped (LA-MON-06).",
+          "when_stopped": "Allowed while stopped: this call carries no authority to act and starts no new work. It is recorded like any other call.",
+          "errors": [
+            "invalid_request",
+            "unauthenticated",
+            "idempotency_conflict",
+            "rate_limited",
+            "internal",
+            "dependency_down"
+          ],
+          "requirements": [
+            "LA-MON-03",
+            "LA-MON-05",
+            "LA-MON-06"
+          ]
+        },
+        {
+          "operation_id": "ESC-02",
+          "method": "GET",
+          "path": "/v1/health-views/{view}",
+          "caller": "P1.07",
+          "callee": "P1.06",
+          "purpose": "The dashboard reads E's health and KPI views, read-only.",
+          "request": [
+            {
+              "name": "view",
+              "required": false,
+              "spec": "path parameter, `receptor-health` or `kpis`"
+            },
+            {
+              "name": "receptor_id",
+              "required": false,
+              "spec": "query, `rcp_`"
+            }
+          ],
+          "response": [
+            {
+              "name": "rows",
+              "required": true,
+              "spec": "array of objects"
+            },
+            {
+              "name": "as_of",
+              "required": true,
+              "spec": "RFC 3339 UTC with milliseconds"
+            },
+            {
+              "name": "stale",
+              "required": true,
+              "spec": "boolean, true when the data is older than its freshness bound"
+            }
+          ],
+          "authorized_by": "J's own read-only component identity. Visibility confers no authority (LA-DASH-02, AMD-10).",
+          "when_callee_is_down": "Answer the caller `dependency_down` (503, retriable). The caller shows the view as unavailable and says so plainly; it never shows stale data as current (LA-EVD-04, LA-MON-06).",
+          "when_stopped": "Allowed while stopped: this call carries no authority to act and starts no new work. It is recorded like any other call.",
+          "errors": [
+            "invalid_request",
+            "unauthenticated",
+            "forbidden",
+            "not_found",
+            "rate_limited",
+            "internal",
+            "dependency_down"
+          ],
+          "requirements": [
+            "LA-MON-04",
+            "LA-DASH-02"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "BND-13",
+      "path": "Receptors to H",
+      "style": "Purple, dashed",
+      "meaning": "Financial reporting",
+      "pairs": [
+        [
+          "Receptor",
+          "2B.08"
+        ]
+      ],
+      "same_as": "LANE-FIN",
+      "operations": []
+    },
+    {
+      "id": "BND-14",
+      "path": "Bank Vault to H",
+      "style": "Blue",
+      "meaning": "Bank statement upload only (read-only input)",
+      "pairs": [
+        [
+          "Founder",
+          "2B.08"
+        ]
+      ],
+      "operations": [
+        {
+          "operation_id": "VLT-01",
+          "method": "POST",
+          "path": "/v1/bank-statements",
+          "caller": "Founder",
+          "callee": "2B.08",
+          "purpose": "The Founder uploads a statement. This is the only path from the bank into Dyson.",
+          "request": [
+            {
+              "name": "Idempotency-Key",
+              "required": true,
+              "spec": "header, `idem_` + 26 base32. Required on every state-changing call"
+            },
+            {
+              "name": "statement_ref",
+              "required": true,
+              "spec": "string, where the uploaded file was stored"
+            },
+            {
+              "name": "period",
+              "required": true,
+              "spec": "string, `YYYY-MM-DD` to `YYYY-MM-DD`"
+            },
+            {
+              "name": "uploaded_by",
+              "required": true,
+              "spec": "string, always `founder`"
+            },
+            {
+              "name": "uploaded_at",
+              "required": true,
+              "spec": "RFC 3339 UTC with milliseconds"
+            }
+          ],
+          "response": [
+            {
+              "name": "statement_id",
+              "required": true,
+              "spec": "string"
+            },
+            {
+              "name": "lines_parsed",
+              "required": true,
+              "spec": "integer"
+            },
+            {
+              "name": "matched_reports",
+              "required": true,
+              "spec": "array of strings, the revenue reports this statement makes final"
+            },
+            {
+              "name": "classified_as",
+              "required": true,
+              "spec": "string, always `personal-financial-data` under the gate 6 policy (LA-VLT-04)"
+            }
+          ],
+          "authorized_by": "The Founder alone, authenticated at the Entry Gateway. Dyson holds no bank credential and has no bank API: upload only (LA-VLT-01, LA-VLT-02). No component may call this on the Founder's behalf.",
+          "when_callee_is_down": "The upload fails and is reported as failed. Revenue stays `reported-not-final`; nothing is marked final on an unparsed statement.",
+          "when_stopped": "Allowed while stopped: it moves no money and starts no task. It is recorded in the audit log.",
+          "errors": [
+            "invalid_request",
+            "unauthenticated",
+            "forbidden",
+            "idempotency_conflict",
+            "internal",
+            "dependency_down"
+          ],
+          "requirements": [
+            "LA-VLT-01",
+            "LA-VLT-02",
+            "LA-VLT-03",
+            "LA-VLT-04",
+            "LA-IF-05",
+            "LA-FIN-04"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "BND-15",
+      "path": "F and Receptors; G and Receptors",
+      "style": "Green and blue",
+      "meaning": "QA/QC verification lane; tasks lane via the Tool Hub",
+      "pairs": [
+        [
+          "2B.06",
+          "Receptor"
+        ],
+        [
+          "2A.07",
+          "Receptor"
+        ]
+      ],
+      "same_as": "LANE-QA and LANE-TASK",
+      "operations": []
+    }
+  ],
+  "internal": [
+    {
+      "id": "INT-01",
+      "path": "G and the Supply Chain / Integration Gate (inside card A)",
+      "style": "Not drawn separately",
+      "meaning": "Derived. The Gate is drawn as a box inside the Governance Core (PRD section 7.2.1), not as its own path. G needs it because nothing is callable until it has passed the Gate (LA-TOOL-03).",
+      "pairs": [
+        [
+          "2A.07",
+          "2A.08"
+        ]
+      ],
+      "operations": [
+        {
+          "operation_id": "SCG-01",
+          "method": "GET",
+          "path": "/v1/admissions/{tool_id}",
+          "caller": "2A.07",
+          "callee": "2A.08",
+          "purpose": "G checks that a tool, API, plugin or MCP connector has been admitted before it is callable.",
+          "request": [
+            {
+              "name": "tool_id",
+              "required": false,
+              "spec": "path parameter, `tool_`"
+            }
+          ],
+          "response": [
+            {
+              "name": "tool_id",
+              "required": true,
+              "spec": "string, echoed"
+            },
+            {
+              "name": "admitted",
+              "required": true,
+              "spec": "boolean"
+            },
+            {
+              "name": "risk",
+              "required": true,
+              "spec": "string, `low`, `medium` or `high`"
+            },
+            {
+              "name": "founder_approval_id",
+              "required": true,
+              "spec": "string, `apr_`, required and present when risk is `high`"
+            },
+            {
+              "name": "change_record_ref",
+              "required": true,
+              "spec": "string, the auditable change record for this admission"
+            },
+            {
+              "name": "blocked",
+              "required": true,
+              "spec": "boolean, true when the item is suspect and isolated under AMD-5"
+            }
+          ],
+          "authorized_by": "G's own component identity. A read only. Admission itself is the Gate's decision and a high-risk item needs the Founder's approval (LA-GOV-06, LA-SEC-04).",
+          "when_callee_is_down": "G treats an unreachable Gate as not admitted and refuses the tool call with `not_admitted`. An unknown admission state is never read as admitted.",
+          "when_stopped": "Always allowed: it is a read and starts no work.",
+          "errors": [
+            "unauthenticated",
+            "not_found",
+            "rate_limited",
+            "internal",
+            "dependency_down",
+            "timeout"
+          ],
+          "requirements": [
+            "LA-TOOL-03",
+            "LA-GOV-06",
+            "LA-SEC-04",
+            "LA-SEC-05"
+          ]
+        }
+      ]
+    }
+  ],
+  "excluded_paths": [
+    {
+      "path": "R11 to R14",
+      "reason": "Optional governed receptor-to-receptor support. It needs more than one Receptor, and the baseline has only Test T0 (LA-IF-08, rule 8). No contract in v1."
+    },
+    {
+      "path": "Customers and R11; customer payment to bank",
+      "reason": "A Layer B concern. Layer A never sits in the customer payment flow, so there is nothing for it to implement (LA-IF-06)."
+    }
+  ]
+}
