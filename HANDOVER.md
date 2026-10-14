@@ -195,25 +195,45 @@ Nothing in Part 1 can move without the Founder.
 
 | Package | Blocked on |
 | --- | --- |
-| P1.01 Cost guardrails | Gate 1, which is incomplete |
+| P1.01 Cost guardrails | The Founder declaring gate 1 closed. The three open items are now answered |
 | P1.03, P1.04, P1.05 | Other parts that do not exist yet |
-| P1.07 Founder Dashboard | Needs the Founder's decisions and AWS |
+| P1.07 Founder Dashboard | Needs the Founder's decisions |
 
-### Gate 1 is not finished
+### The account changed, and so did gate 1
 
-Three things are open, and all three are the Founder's to do:
+Everything written here before 14 Oct 2026 described an **older AWS account** that is no longer in use. The
+Founder opened a new one. Do not carry the old numbers forward: there is no $10 budget, and the unverified
+alert email belonged to the account that was replaced.
 
-1. The region is not decided. Sydney or Mumbai.
-2. The EC2 vCPU quota has not been checked or raised.
-3. The budget alert email is unverified. It showed `0/1`.
+The new account runs AWS's simplified, project-based experience. The project is named Dyson Sphere. Checked
+in the console on 14 Oct 2026:
 
-That third one matters most. An unverified recipient means the budget alarm fires into nothing, so the cap is
-not a control yet. `part1/p109_runbooks/03_spend_review.md` opens with exactly this check.
+| Gate 1 item | What was found |
+| --- | --- |
+| Region | Already assigned: **Asia Pacific (Sydney), ap-southeast-2**. Not a choice in this experience |
+| EC2 vCPU quota | `Running On-Demand Standard (A, C, D, H, I, M, R, T, Z) instances` is **5**, with **0** in use. Enough for Layer A. The "Request increase at account level" button is disabled here anyway |
+| Budget and alert email | **No budget exists** in this account |
+
+### Why the missing budget matters less than it sounds
+
+The Free Tier page states plainly that a free plan account does not get charged: credits cover the costs, and
+access to AWS services ends when the free plan period expires or the credits run out. It does not start
+billing. At the time of checking: **$100 credits remaining, 181 days**.
+
+So the real cost guardrail is no longer an alarm that fires. It is this:
+
+**Do not upgrade the plan, and do not activate advanced features.** Both are irreversible, and activating
+advanced features removes the ability to set a spend limit at all, which makes the Founder responsible for
+every cost incurred. Neither may happen without the Founder's authenticated approval (rule 4).
+
+Nothing on the list AWS offers as a reason to activate advanced features is needed here: one region, one
+account, no external identity provider, no multi-account structure.
 
 ### A cost fact the Founder should keep in view
 
-The $10 budget on record cannot host Layer A. The cheapest shape that runs it is about $24 a month, or $20
-if IPv6 only. This was raised and has not been resolved.
+The cheapest shape that actually runs Layer A is about $24 a month, or $20 if IPv6 only. While credits last
+that comes out of the $100, not out of pocket. When the credits or the 181 days run out, that becomes a real
+monthly bill, and the plan has to be decided before then rather than after.
 
 ---
 
@@ -221,7 +241,7 @@ if IPv6 only. This was raised and has not been resolved.
 
 | Thing | State |
 | --- | --- |
-| AWS from this session | **Unreachable.** `sts.amazonaws.com` returns 403 through the proxy tunnel |
+| AWS from this session | **Unreachable** over the network. `sts.amazonaws.com` returns 403 through the proxy tunnel. The console is reachable through the Founder's Chrome instead, and that is how gate 1 was checked |
 | GitHub API | Reachable |
 | `gh` CLI with `GH_TOKEN` | Token is not valid for `gh`, but `git push` works through the session proxy |
 | Outbound network | Allowlisted. Package registries and GitHub only. Other sites are refused before they are reached |
@@ -237,9 +257,11 @@ through his browser.
 
 In order:
 
-1. Ask the Founder to finish gate 1: pick the region, check the EC2 vCPU quota, and verify the budget alert
-   email. One short message, not a menu.
-2. When gate 1 closes, build P1.01, the cost guardrails.
+1. Ask the Founder to declare gate 1 closed. All three of its items were checked in the console on
+   14 Oct 2026 and none of them is open any more. Section 6 has what was found.
+2. Build P1.01, the cost guardrails. Its shape has changed: on the free plan there is no bill to cap, so the
+   guardrail is the recorded cap, the tagging of every resource by part, and the standing refusal to upgrade
+   the plan or activate advanced features without the Founder's approval.
 3. P1.07, the Founder Dashboard, after that.
 
 Do not start Part 2A or 2B. The work order for them exists, but Part 1 is not finished and rule 1 says no
