@@ -14,9 +14,10 @@ import cost_guard  # noqa: E402
 def a_register(**over):
     """The register as it stands today, verified against the Founder's actual account on 14 Oct 2026."""
     fields = {
-        "approved_cap_usd": 100.00,
+        "approved_cap_usd": 7.00,
+        "period": "month",
         "approved_by": "founder",
-        "approved_at": "2026-10-14T14:58:00.000Z",
+        "approved_at": "2026-10-14T15:29:52.000Z",
         "plan": "free",
         "region": "ap-southeast-2",
         "credits_remaining_usd": 100.00,
@@ -65,7 +66,8 @@ class TheCapOnRecord(unittest.TestCase):
 
     def test_a_register_the_founder_approved_is_accepted(self):
         register = a_register()
-        self.assertEqual(register.cap_usd, 100.00)
+        self.assertEqual(register.cap_usd, 7.00)
+        self.assertEqual(register.period, "month")
         self.assertEqual(register.approved_by, "founder")
         self.assertEqual(register.region, "ap-southeast-2")
 
@@ -97,9 +99,22 @@ class TheCapOnRecord(unittest.TestCase):
 
     def test_the_register_reads_back_as_a_plain_record(self):
         record = a_register().to_dict()
-        self.assertEqual(record["approved_cap_usd"], 100.00)
+        self.assertEqual(record["approved_cap_usd"], 7.00)
         self.assertEqual(record["plan"], "free")
         self.assertIs(record["verified"], True)
+
+    def test_a_cap_with_no_period_is_refused_because_it_means_nothing(self):
+        for bad in ("", None, "year", "forever", "week"):
+            with self.assertRaises(cost_guard.InvalidRegister):
+                a_register(period=bad)
+
+    def test_the_record_spells_the_cap_out_in_words_so_it_cannot_be_read_as_a_total(self):
+        record = a_register().to_dict()
+        self.assertEqual(record["period"], "month")
+        self.assertEqual(record["cap_reads_as"], "$7.00 per month")
+
+    def test_the_alarm_carries_the_period_too(self):
+        self.assertEqual(cost_guard.Guard(a_register()).check_spend(1.00)["period"], "month")
 
 
 class Verification(unittest.TestCase):
@@ -296,28 +311,33 @@ class DoneWhen(unittest.TestCase):
     def test_the_cap_is_on_record_with_the_account_it_was_approved_against(self):
         record = a_register().to_dict()
         self.assertEqual(record["approved_by"], "founder")
-        self.assertEqual(record["approved_cap_usd"], 100.00)
+        self.assertEqual(record["approved_cap_usd"], 7.00)
+        self.assertEqual(record["cap_reads_as"], "$7.00 per month")
         self.assertEqual(record["region"], "ap-southeast-2")
         self.assertIs(record["verified"], True)
         self.assertEqual(record["credits_remaining_usd"], 100.00)
 
     def test_an_alarm_fires_on_a_test_threshold(self):
-        """A one percent test threshold on the recorded cap, driven past it and back under it."""
+        """A one percent test threshold on the recorded cap, driven past it and back under it.
+
+        One percent of the $7.00 monthly cap is 7 cents, which is exactly the kind of figure that goes
+        wrong when money is held as a float."""
         guard = cost_guard.Guard(a_register(), thresholds=(0.01, 0.50, 1.00))
 
-        quiet = guard.check_spend(0.50)
+        quiet = guard.check_spend(0.03)
         self.assertEqual(quiet["fired"], [])
         self.assertIs(quiet["alarm"], False)
 
-        fired = guard.check_spend(1.00)
+        fired = guard.check_spend(0.07)
         self.assertIs(fired["alarm"], True)
         self.assertEqual(fired["fired"], [0.01])
-        self.assertEqual(fired["headroom_usd"], 99.00)
+        self.assertEqual(fired["headroom_usd"], 6.93)
         self.assertIs(fired["over_cap"], False)
 
-        at_cap = guard.check_spend(100.00)
+        at_cap = guard.check_spend(7.00)
         self.assertEqual(at_cap["fired"], [0.01, 0.50, 1.00])
         self.assertIs(at_cap["over_cap"], True)
+        self.assertEqual(at_cap["headroom_usd"], 0.0)
 
 
 if __name__ == "__main__":

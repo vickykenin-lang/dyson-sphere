@@ -11,13 +11,34 @@ place a number about money is allowed to live. Nothing else quotes a cap from me
 
 | Field | Value |
 | --- | --- |
-| Approved cap | **Not yet approved.** See "What is still open" below |
+| Approved cap | **$7.00 per month** |
 | Currency | USD |
-| Approved by | the Founder, and nobody else (rule 4) |
+| Period | month. A cap with no period is not a cap, and the register refuses one without it |
+| Approved by | the Founder |
+| Approved at | 2026-10-14T15:29:52.000Z |
 | Scope | one cap across all three parts (rule W6) |
 
-Until the Founder records a number here, `cost_guard.CostRegister` refuses to build a register, and the
-guard has nothing to measure against. That refusal is deliberate. A cap nobody approved is not a cap.
+### What $7.00 a month buys, and what it does not
+
+$7.00 is exactly the price of the Lightsail bundle this prototype is sized for: 1 GB RAM, 2 vCPU, 40 GB SSD.
+So the host alone consumes the entire cap, and the alarm at 1.00 would fire in the first month the host runs.
+
+That is worth saying plainly rather than discovering later:
+
+| Cost | Covered by this cap? |
+| --- | --- |
+| The prototype host, $7.00 a month | Yes, and it uses all of it |
+| Extra block storage, $0.10 per GB a month | No headroom left for it |
+| Model API calls to an external vendor | **No.** These are a different vendor and are not on the AWS bill at all |
+| Voice API | **No**, and voice is deferred anyway |
+
+Rule W6 says there is one cap across all three parts. Model and voice API spend falls under that same cap,
+and at $7.00 a month there is nothing left for it. Two honest readings follow, and only the Founder picks:
+
+1. The cap covers AWS only, and model API spend gets its own approved number when 2B.03 needs one.
+2. The cap covers everything, and it has to rise before any model API call is made.
+
+Until he says which, nothing is blocked: no host exists, no model call is made, and no money moves.
 
 ## 2. What was verified in the Founder's own account
 
@@ -66,7 +87,7 @@ external identity provider, no multi-account structure.
 | Claim | State |
 | --- | --- |
 | The alarm logic is right | **Proven.** 47 tests, and the implementation was broken fourteen ways to check the tests notice |
-| The cap is on record | **Waiting** on the Founder's number |
+| The cap is on record | **Done.** $7.00 a month, approved 14 Oct 2026 |
 | The account facts are verified | **Done**, 14 Oct 2026, in the console |
 | A real budget exists in AWS and fires | **Cannot be proven on the free plan.** There is nothing to bill |
 
@@ -83,11 +104,8 @@ run out on the free plan, access ends rather than a bill arriving.
 
 ## 6. What is still open
 
-One thing, and it is the Founder's:
-
-**What cap do you approve?** On the free plan nothing can be spent past the $100 of credits, so a cap below
-that is an early warning line rather than a hard ceiling. Record the number in section 1 and the guard has
-something to measure against.
+One thing, and it is the Founder's: **does the $7.00 cap cover AWS only, or everything including model API
+spend?** Section 1 sets out both readings. Nothing is blocked until a model call is actually made.
 
 ---
 
@@ -97,9 +115,10 @@ something to measure against.
 from cost_guard import CostRegister, Guard
 
 register = CostRegister(
-    approved_cap_usd=<the Founder's number>,
+    approved_cap_usd=7.00,
+    period="month",
     approved_by="founder",
-    approved_at="<when he approved it>",
+    approved_at="2026-10-14T15:29:52.000Z",
     plan="free",
     region="ap-southeast-2",
     credits_remaining_usd=100.00,

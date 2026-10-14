@@ -43,6 +43,9 @@ PARTS = ("part1", "part2a", "part2b")
 PART_TAG = "dyson-part"
 SCAFFOLD_TAG = "dyson-scaffold"
 
+# The periods a cap may cover. A cap with no period is not a cap.
+PERIODS = ("month",)
+
 # Fractions of the cap at which an alarm fires. 1.0 is the cap itself.
 DEFAULT_THRESHOLDS = (0.50, 0.80, 1.00)
 
@@ -80,9 +83,13 @@ class CostRegister:
     verification.
     """
 
-    def __init__(self, approved_cap_usd, approved_by, approved_at, plan, region,
+    def __init__(self, approved_cap_usd, approved_by, approved_at, plan, region, period="month",
                  credits_remaining_usd=None, days_remaining=None,
                  verified_at=None, verified_how=None, currency="USD"):
+        if period not in PERIODS:
+            raise InvalidRegister(
+                "A cap means nothing without the period it covers. period must be one of %s, not %r."
+                % (", ".join(PERIODS), period))
         if approved_by != "founder":
             raise InvalidRegister(
                 "A cap is only on record when the Founder approved it, not %r (rule 4)." % (approved_by,))
@@ -99,6 +106,7 @@ class CostRegister:
         self.cap_cents = cents(approved_cap_usd)
         if self.cap_cents <= 0:
             raise InvalidRegister("A cap of zero is not a cap. Record what the Founder actually approved.")
+        self.period = period
         self.approved_by = approved_by
         self.approved_at = approved_at
         self.plan = plan
@@ -121,6 +129,8 @@ class CostRegister:
     def to_dict(self):
         return {
             "approved_cap_usd": self.cap_usd,
+            "period": self.period,
+            "cap_reads_as": "$%.2f per %s" % (self.cap_usd, self.period),
             "currency": self.currency,
             "approved_by": self.approved_by,
             "approved_at": self.approved_at,
@@ -160,6 +170,7 @@ class Guard:
         return {
             "spend_usd": dollars(spent),
             "cap_usd": self.register.cap_usd,
+            "period": self.register.period,
             "fired": fired,
             "highest_fired": fired[-1] if fired else None,
             "over_cap": spent >= cap,

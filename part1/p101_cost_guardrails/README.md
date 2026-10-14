@@ -12,7 +12,7 @@ account on 14 Oct 2026. Read that first.
 | --- | --- |
 | `COST_REGISTER.md` | The cap, the verified account facts, and what is still open |
 | `src/cost_guard.py` | The register, the alarm and the refusals. Standard library only |
-| `tests/test_cost_guard.py` | 47 tests, including the two "done when" cases |
+| `tests/test_cost_guard.py` | 50 tests, including the two "done when" cases |
 
 ## Run the tests
 
@@ -32,10 +32,11 @@ undone, and the refusal says so.
 
 ## How it was checked
 
-47 tests pass. Beyond that, the implementation was deliberately broken fourteen ways and the tests re-run:
+50 tests pass. Beyond that, the implementation was deliberately broken eighteen ways and the tests re-run:
 
 | What was broken | Caught |
 | --- | --- |
+| The period was dropped, so $7 could read as a total rather than a rate | yes, after a fix |
 | A threshold fired only above itself, never exactly at it | yes |
 | `over_cap` only counted past the cap, not at it | yes |
 | Headroom was allowed to go negative | yes |
@@ -68,6 +69,6 @@ different fault from wrong, and the test now checks the message says which.
 | --- | --- |
 | Needs first: gate 1 | closed by the Founder, 14 Oct 2026 |
 | LA-COST-04, verified against the real account | done, in the console, 14 Oct 2026 |
-| LA-COST-01, the cap on record | waiting on the Founder's number |
+| LA-COST-01, the cap on record | done. $7.00 a month, approved 14 Oct 2026 |
 | A real AWS budget that fires | cannot be proven on the free plan. There is nothing to bill |
 | AMD-3 stage reached | 4, test passed |
