@@ -46,6 +46,11 @@ SCAFFOLD_TAG = "dyson-scaffold"
 # The periods a cap may cover. A cap with no period is not a cap.
 PERIODS = ("month",)
 
+# Where spend can come from. AWS is separated out because on the free plan it cannot bill at all.
+AWS_SOURCES = ("aws-host", "aws-storage", "aws-other")
+VENDOR_SOURCES = ("model-api", "voice-api", "other-vendor")
+SOURCES = AWS_SOURCES + VENDOR_SOURCES
+
 # Fractions of the cap at which an alarm fires. 1.0 is the cap itself.
 DEFAULT_THRESHOLDS = (0.50, 0.80, 1.00)
 
@@ -195,6 +200,37 @@ class Guard:
                      "when the credits or the plan period run out. The decision to move to a paid plan has "
                      "to be made before that, not after."),
         }
+
+    def counts_against_cap(self, source):
+        """Whether spend from this source counts against the cap.
+
+        The cap measures money that can actually leave the Founder's pocket. While the account is on the
+        free plan, AWS cannot charge him at all: credits cover the cost and access ends when they run out,
+        rather than a bill arriving. Capping what cannot bill him would be ceremony, and a cap that fires on
+        a cost nobody can be charged for teaches people to ignore it.
+
+        What can take his money today is a different vendor: the model API, and voice when it is no longer
+        deferred. Those count from the first cent.
+
+        The day the account leaves the free plan, AWS counts like everything else, which is exactly when the
+        cap should start to bite. There is still one cap across all parts, as rule W6 requires.
+        """
+        if source not in SOURCES:
+            raise InvalidRegister(
+                "%r is not a spend source this guard knows. It refuses what it does not recognize rather "
+                "than quietly leaving it out of the cap (rule W8)." % (source,))
+        if source in VENDOR_SOURCES:
+            return {"source": source, "counts": True,
+                    "why": "A different vendor can charge the Founder directly, so it counts from the first "
+                           "cent."}
+        if self.register.plan == "free":
+            return {"source": source, "counts": False,
+                    "why": "The account is on the free plan, where AWS cannot charge at all. Credits cover "
+                           "it and access ends when they run out. Track it against credits and days, not "
+                           "against the cap."}
+        return {"source": source, "counts": True,
+                "why": "The account is on the paid plan, so AWS can charge the Founder and counts like "
+                       "every other source."}
 
     # ------------------------------------------------------------------ the tags
     def check_tags(self, resources):

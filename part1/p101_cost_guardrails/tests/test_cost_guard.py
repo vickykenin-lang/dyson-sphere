@@ -191,6 +191,38 @@ class FreePlanReality(unittest.TestCase):
         self.assertIs(answer["applies"], False)
 
 
+class WhatCountsAgainstTheCap(unittest.TestCase):
+    """The cap measures money that can actually leave the Founder's pocket."""
+
+    def test_a_vendor_that_can_charge_him_counts_from_the_first_cent(self):
+        guard = cost_guard.Guard(a_register())
+        for source in ("model-api", "voice-api", "other-vendor"):
+            answer = guard.counts_against_cap(source)
+            self.assertIs(answer["counts"], True, source)
+
+    def test_aws_does_not_count_while_the_account_cannot_be_charged(self):
+        guard = cost_guard.Guard(a_register(plan="free"))
+        for source in ("aws-host", "aws-storage", "aws-other"):
+            answer = guard.counts_against_cap(source)
+            self.assertIs(answer["counts"], False, source)
+            self.assertIn("free plan", answer["why"])
+
+    def test_aws_starts_counting_the_moment_the_plan_can_charge_him(self):
+        guard = cost_guard.Guard(a_register(plan="paid"))
+        self.assertIs(guard.counts_against_cap("aws-host")["counts"], True)
+
+    def test_the_plan_is_what_decides_it_not_the_source_alone(self):
+        free = cost_guard.Guard(a_register(plan="free")).counts_against_cap("aws-host")
+        paid = cost_guard.Guard(a_register(plan="paid")).counts_against_cap("aws-host")
+        self.assertNotEqual(free["counts"], paid["counts"])
+
+    def test_a_source_the_guard_does_not_know_is_refused_not_quietly_left_out(self):
+        guard = cost_guard.Guard(a_register())
+        for unknown in ("mystery", "", None, "aws"):
+            with self.assertRaises(cost_guard.InvalidRegister):
+                guard.counts_against_cap(unknown)
+
+
 class Tags(unittest.TestCase):
     """Rules W3 and W7: every resource says whose it is, and scaffolding says it is scaffolding."""
 

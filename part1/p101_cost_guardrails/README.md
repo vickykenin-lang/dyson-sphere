@@ -12,7 +12,7 @@ account on 14 Oct 2026. Read that first.
 | --- | --- |
 | `COST_REGISTER.md` | The cap, the verified account facts, and what is still open |
 | `src/cost_guard.py` | The register, the alarm and the refusals. Standard library only |
-| `tests/test_cost_guard.py` | 50 tests, including the two "done when" cases |
+| `tests/test_cost_guard.py` | 55 tests, including the two "done when" cases |
 
 ## Run the tests
 
@@ -32,7 +32,7 @@ undone, and the refusal says so.
 
 ## How it was checked
 
-50 tests pass. Beyond that, the implementation was deliberately broken eighteen ways and the tests re-run:
+55 tests pass. Beyond that, the implementation was deliberately broken twenty-two ways and the tests re-run:
 
 | What was broken | Caught |
 | --- | --- |

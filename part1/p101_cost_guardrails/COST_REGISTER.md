@@ -32,13 +32,30 @@ That is worth saying plainly rather than discovering later:
 | Model API calls to an external vendor | **No.** These are a different vendor and are not on the AWS bill at all |
 | Voice API | **No**, and voice is deferred anyway |
 
-Rule W6 says there is one cap across all three parts. Model and voice API spend falls under that same cap,
-and at $7.00 a month there is nothing left for it. Two honest readings follow, and only the Founder picks:
+### The decision
 
-1. The cap covers AWS only, and model API spend gets its own approved number when 2B.03 needs one.
-2. The cap covers everything, and it has to rise before any model API call is made.
+**The cap measures money that can actually leave the Founder's pocket. While the account is on the free
+plan, AWS does not count against it.**
 
-Until he says which, nothing is blocked: no host exists, no model call is made, and no money moves.
+The reasoning, because this needs to survive someone reading it in six months:
+
+A free plan account cannot be charged. Credits cover the cost and access ends when they run out, rather than
+a bill arriving. Capping something that cannot bill him is ceremony, and a cap that fires on a cost nobody
+can be charged for teaches people to ignore the cap. That is worse than having none.
+
+What can take his money today is a different vendor: the model API, and voice once it stops being deferred.
+Those count from the first cent, and $7.00 a month of model API is a real amount of Test T0 traffic.
+
+The AWS side is not untracked. It is tracked against the thing that actually constrains it: **$100 of
+credits and 181 days**, each with its own clock, reported by `Guard.credits_warning`.
+
+The day the account leaves the free plan, AWS counts like every other source. That is exactly the moment a
+cap should start to bite, and it happens automatically because the rule reads the plan rather than a list
+somebody has to remember to update.
+
+There is still one cap across all parts, so rule W6 holds.
+
+This rule is not prose. `Guard.counts_against_cap(source)` returns it, and five tests hold it in place.
 
 ## 2. What was verified in the Founder's own account
 
@@ -104,8 +121,13 @@ run out on the free plan, access ends rather than a bill arriving.
 
 ## 6. What is still open
 
-One thing, and it is the Founder's: **does the $7.00 cap cover AWS only, or everything including model API
-spend?** Section 1 sets out both readings. Nothing is blocked until a model call is actually made.
+Nothing in this package. The cap is recorded, the account is verified, and what counts against the cap is
+decided and tested.
+
+What is open is bigger than P1.01 and belongs in the plan rather than here: **the free plan period is 181
+days and it runs whether or not anything is deployed.** Part 1 cannot finish without Part 2A, and Part 2A
+has no builder. P1.03, P1.04 and P1.05 all wait on it. P1.02 is merged, so Part 2A's own precondition is
+already met and nothing stands in its way.
 
 ---
 
