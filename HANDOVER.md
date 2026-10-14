@@ -89,6 +89,26 @@ into any file in this repository, and do not send either to any service that doe
 7. Three failed checks put the thing on HOLD.
 8. Test T0 only, synthetic data.
 
+### One builder, not three
+
+On 14 Oct 2026 the Founder said all three parts are to be built here: **"sab tumhe hi banana hai."** The plan
+was written for three builders working side by side, which is what rules W1 to W8 are for.
+
+Most of those rules still earn their place with one builder. Separate folders and branches keep the ownership
+guard meaningful and the history readable. Separate cloud prefixes and tags limit blast radius, which has
+nothing to do with how many people there are. Contracts rather than code is a design discipline.
+
+One thing genuinely weakens, and it has to be said rather than quietly absorbed:
+
+**Plan rule 2 asks for an independent check on critical packages, and Part 2A and 2B are the critical ones.**
+A builder who checks his own critical work is not an independent check, however carefully he does it. Part 1
+did not have this problem, because Part 1 is low-risk by definition.
+
+So for every critical package, the check is run by **a separate agent that did not see the work being built**.
+It is given the requirement and the finished artifact, and not the reasoning behind it. That is a real second
+pair of eyes rather than the same eyes looking twice. If that cannot be done for a package, the package is
+reported as unchecked rather than described as checked.
+
 ### The eight side-by-side rules, W1 to W8
 
 1. **W1** One file, one builder.
