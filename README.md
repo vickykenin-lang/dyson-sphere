@@ -68,3 +68,6 @@ in the runtime response loop (LA-SEC-06). The guard refuses a runtime file that 
 6. Parts build against agreed interfaces and stubs. Wiring happens at Sync.
 7. Three consecutive failed checks on one package put it on HOLD for Founder review.
 8. Test T0 is the only Receptor. Data is synthetic: no real money, customer data or bank statements.
+
+Rule 2 is the one that changed shape. All three parts are built in one place now, so an independent check
+cannot mean a different builder. `CHECKING.md` says what it means instead, and what the limits of that are.
