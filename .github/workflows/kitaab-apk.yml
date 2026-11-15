@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   apk:
@@ -38,3 +38,17 @@ jobs:
           name: Kitaab-Reader-apk
           path: kitaab-reader/Kitaab-Reader.apk
           retention-days: 90
+
+      # Keep a copy of the APK on the branch, so it can be downloaded straight from the repository.
+      # Pushes made with GITHUB_TOKEN do not start another run.
+      - name: Save the APK to the branch
+        if: github.event_name == 'push'
+        working-directory: .
+        run: |
+          mkdir -p kitaab-reader/release
+          cp kitaab-reader/Kitaab-Reader.apk kitaab-reader/release/Kitaab-Reader.apk
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add kitaab-reader/release/Kitaab-Reader.apk
+          git commit -m "Kitaab Reader APK built from ${GITHUB_SHA::7}" || exit 0
+          git push origin "HEAD:${GITHUB_REF_NAME}"
